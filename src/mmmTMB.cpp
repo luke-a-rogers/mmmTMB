@@ -25,24 +25,26 @@ enum valid_process {
 template<class Type>
 Type objective_function<Type>::operator() ()
 {
-
-  // -------------- Data: Estimated rates --------------------------------------
-
-  DATA_SCALAR(tag_loss_rate);
-  DATA_SCALAR(imm_loss_ratio);
-  DATA_MATRIX(capture_rate_2d);
-  DATA_MATRIX(report_ratio_2d);
-
-  // -------------- Data: Movement template ------------------------------------
-
-  DATA_IMATRIX(template_2d);
-
-  // -------------- Data: Empirical counts -------------------------------------
+  // -------------- Empirical counts -------------------------------------------
 
   DATA_ARRAY(released_3d);
   DATA_ARRAY(recovered_5d);
 
-  // -------------- Data: Model structure --------------------------------------
+  // -------------- Estimates by area and time  --------------------------------
+
+  DATA_MATRIX(capture_rate_2d);
+  DATA_MATRIX(report_ratio_2d);
+
+  // -------------- Movement template ------------------------------------------
+
+  DATA_IMATRIX(template_2d);
+
+  // -------------- Global estimates--------------------------------------------
+
+  DATA_SCALAR(tag_loss_rate);
+  DATA_SCALAR(imm_loss_ratio);
+
+  // -------------- Model structure --------------------------------------------
 
   DATA_INTEGER(error_family);
   DATA_INTEGER(time_process);
