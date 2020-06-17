@@ -18,3 +18,7 @@ Imports:
     Rcpp,
     RcppEigen,
     TMB
+LinkingTo: 
+    Rcpp,
+    RcppEigen,
+    TMB    
