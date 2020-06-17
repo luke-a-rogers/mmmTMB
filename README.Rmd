@@ -15,6 +15,10 @@ knitr::opts_chunk$set(
 
 # mmmTMB
 
+[![Travis build status](https://travis-ci.org/luke-a-rogers/mmmTMB.svg?branch=master)](https://travis-ci.org/luke-a-rogers/mmmTMB)
+[![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
+[![Coverage status](https://codecov.io/gh/luke-a-rogers/mmmTMB/branch/master/graph/badge.svg)](https://codecov.io/github/luke-a-rogers/mmmTMB?branch=master)
+
 An R package to fit Markov movement models using TMB
 
 ## Installation
