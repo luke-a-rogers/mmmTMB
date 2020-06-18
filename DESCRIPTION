@@ -17,4 +17,13 @@ RoxygenNote: 7.1.0
 Imports: 
     Rcpp,
     RcppEigen,
-    TMB
+    TMB,
+    tictoc
+LinkingTo: 
+    Rcpp,
+    RcppEigen,
+    TMB    
+Depends: 
+    R (>= 2.10)
+Suggests: 
+    testthat
