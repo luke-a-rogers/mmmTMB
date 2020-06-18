@@ -47,7 +47,7 @@ Type objective_function<Type>::operator() ()
   // -------------- Model structure --------------------------------------------
 
   DATA_INTEGER(error_family);
-  DATA_INTEGER(time_process);
+  // DATA_INTEGER(time_process);
   DATA_INTEGER(recapture_delay);
   DATA_INTEGER(result_units);
   // DATA_INTEGER(normalize);
