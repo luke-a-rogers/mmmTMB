@@ -1,12 +1,5 @@
 #include <TMB.hpp>
 
-// ---------------- Methods called by the model --------------------------------
-
-template <class Type>
-Type invTns(Type x, Type min_val, Type max_val) {
-  // Return the inverse scaled logit
-  return min_val + (max_val - min_val) * invlogit(x);
-}
 
 // ---------------- Enumerate valid constants ----------------------------------
 
@@ -35,21 +28,21 @@ Type objective_function<Type>::operator() ()
   DATA_MATRIX(capture_rate_2d);
   DATA_MATRIX(report_ratio_2d);
 
-  // -------------- Movement template ------------------------------------------
-
-  DATA_IMATRIX(template_2d);
-
   // -------------- Global estimates--------------------------------------------
 
   DATA_SCALAR(tag_loss_rate);
   DATA_SCALAR(imm_loss_ratio);
 
+  // -------------- Movement template ------------------------------------------
+
+  DATA_IMATRIX(template_2d);
+
   // -------------- Model structure --------------------------------------------
 
-  DATA_INTEGER(error_family);
-  // DATA_INTEGER(time_process);
   DATA_INTEGER(recapture_delay);
+  DATA_INTEGER(error_family);
   DATA_INTEGER(result_units);
+  DATA_INTEGER(time_process);
   // DATA_INTEGER(normalize);
   DATA_IVECTOR(movement_index);
 
