@@ -216,13 +216,18 @@ Type objective_function<Type>::operator() ()
 
   // ------------- Transform to results units ----------------------------------
 
-  natural_mortality = natural_mortality * result_units;
+  Type natural_mortality_results = natural_mortality * result_units;
 
   // ------------- AD Report ---------------------------------------------------
 
-  ADREPORT(natural_mortality);
+  ADREPORT(natural_mortality_results);
   ADREPORT(dispersion);
   ADREPORT(capture_bias_2d);
+
+  // ------------- Report ------------------------------------------------------
+
+  // REPORT(movement_parameters_3d);
+  // REPORT(movement_probability_4d);
 
   // ------------- Report simulation -------------------------------------------
 
