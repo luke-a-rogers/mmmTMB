@@ -88,6 +88,17 @@ NULL
 #' @export
 #'
 #' @examples
+#' # Fit
+#' fit_list <- mmmTMB(
+#'   released_3d = sim_released_3d,
+#'   recovered_5d = sim_recovered_5d,
+#'   capture_rate_2d = sim_capture_rate_2d,
+#'   report_ratio_2d = sim_report_ratio_2d,
+#'   tag_loss_rate = 0.02,
+#'   imm_loss_ratio = 0.1,
+#'   template_2d = sim_template_2d,
+#'   openmp_cores = floor(parallel::detectCores() / 2))
+#'
 #'
 mmmTMB <- function (released_3d, # Data
                     recovered_5d,
@@ -287,14 +298,52 @@ mmmTMB <- function (released_3d, # Data
                            openmp_cores = openmp_cores)
   }
 
-  #---------------- Create results --------------------------------------------#
-  # TODO: Compute results and SEs
+  #---------------- Create movement probability results -----------------------#
 
-  # Results list
-  results_list <- list(movement_probabilities = NULL,
-                       natural_mortality = NULL,
-                       capture_bias = NULL,
-                       dispersion = NULL)
+  pars <- subset_by_name(tmb_opt$par, "movement_parameters_3d")
+  if (time_process == 0) {
+    covs <- subset_by_name(sd_report$cov.fixed, "movement_parameters_3d")
+  } else {
+    warning("Parameters are a random effect: Figure out where to access covs")
+  }
+  mpr_df <- create_movement_probability_results(
+    pars = pars,
+    covs = covs,
+    dims = c(nv, np, nt, na, ng),
+    tp_2d = template_2d,
+    results_units = result_units,
+    n_draws = 1000)
+
+  #---------------- Create natural mortality results --------------------------#
+
+  nmr_mat <- summary(sd_report)["natural_mortality_results", , drop = FALSE]
+  rownames(nmr_mat) <- NULL
+  colnames(nmr_mat) <- c("Estimate", "SE")
+  nmr_df <- as.data.frame(nmr_mat)
+
+  #---------------- Create capture bias results -------------------------------#
+
+  cbr_ind <- which(rownames(summary(sd_report)) == "capture_bias_2d")
+  cbr_mat <- matrix(0, nrow = na * ng, ncol = 4)
+  cbr_mat[, 1] <- rep(seq_len(ng), each = na)
+  cbr_mat[, 2] <- rep(seq_len(na), ng)
+  cbr_mat[, 3:4] <- summary(sd_report)[cbr_ind, ]
+  colnames(cbr_mat) <- c("Class", "Area", "Estimate", "SE")
+  cbr_df <- as.data.frame(cbr_mat)
+
+  #---------------- Create dispersion results ---------------------------------#
+
+  dsp_mat <- summary(sd_report)["dispersion", , drop = FALSE]
+  rownames(dsp_mat) <- NULL
+  colnames(dsp_mat) <- c("Estimate", "SE")
+  dsp_df <- as.data.frame(dsp_mat)
+
+  #---------------- Create results list ---------------------------------------#
+
+  results_list <- list(movement_probability_results = mpr_df,
+                       natural_mortality_results = nmr_df,
+                       capture_bias = cbr_df,
+                       dispersion = dsp_df)
 
   #---------------- Stop the clock --------------------------------------------#
 
@@ -306,7 +355,7 @@ mmmTMB <- function (released_3d, # Data
     adfun      = tmb_obj, # report(),
     model      = tmb_opt, # convergence, objective,
     structure  = tmb_data, # TODO: optionally place in simulated data
-    parameter  = tmb_parameters,
+    parameter  = tmb_parameters, # Initial values
     optimizer  = optimizer_list,
     results    = results_list,
     map        = tmb_map,
