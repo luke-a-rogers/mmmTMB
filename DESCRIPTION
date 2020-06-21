@@ -18,7 +18,8 @@ Imports:
     Rcpp,
     RcppEigen,
     TMB,
-    tictoc
+    tictoc,
+    MASS
 LinkingTo: 
     Rcpp,
     RcppEigen,
