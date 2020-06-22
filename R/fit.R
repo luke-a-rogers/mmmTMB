@@ -233,11 +233,13 @@ mmmTMB <- function (released_3d, # Data
   # TODO: Add previous fit option
 
   cat("creating tmb_obj \n")
+  tictoc::tic("creating tmb_obj")
   tmb_obj <- TMB::MakeADFun(data = tmb_data,
                             parameters = tmb_parameters,
                             map = tmb_map,
                             random = tmb_random,
                             DLL = "mmmTMB")
+  tictoc::toc()
 
   #---------------- Optimize the objective function ---------------------------#
 
@@ -255,8 +257,9 @@ mmmTMB <- function (released_3d, # Data
 
     # Iterate optimization
     if (nlminb_loops > 0) {
-      cat("running extra nlminb loops \n")
+      cat("\nrunning extra nlminb loops \n")
       for (i in seq(2, nlminb_loops, length = max(0, nlminb_loops - 1))) {
+        cat(paste0("running nlminb loop #", i, "\n"))
         temp <- tmb_opt[c("iterations", "evaluations")]
         tmb_opt <- stats::nlminb(
           start = tmb_opt$par,
@@ -271,8 +274,9 @@ mmmTMB <- function (released_3d, # Data
     # TODO: Troubleshoot Newton steps: output fed into next input correctly?
     # Perform additional Newton steps
     if (newton_steps > 0) {
-      cat("\nrunning newtonsteps \n")
+      cat("\nrunning newton steps \n")
       for (i in seq_len(newton_steps)) {
+        cat(paste0("running newton step #", i, "\n"))
         g <- as.numeric(tmb_obj$gr(tmb_opt$par))
         h <- optimHess(tmb_opt$par, fn = tmb_obj$fn, gr = tmb_obj$gr)
         tmb_opt$par <- tmb_opt$par - solve(h, g)
@@ -300,6 +304,7 @@ mmmTMB <- function (released_3d, # Data
 
   #---------------- Create movement probability results -----------------------#
 
+  tictoc::tic("computing movement estimates and std errs")
   pars <- subset_by_name(tmb_opt$par, "movement_parameters_3d")
   if (time_process == 0) {
     covs <- subset_by_name(sd_report$cov.fixed, "movement_parameters_3d")
@@ -313,6 +318,7 @@ mmmTMB <- function (released_3d, # Data
     tp_2d = template_2d,
     results_units = result_units,
     n_draws = 1000)
+  tictoc::toc()
 
   #---------------- Create natural mortality results --------------------------#
 
