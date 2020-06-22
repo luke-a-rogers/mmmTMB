@@ -121,7 +121,7 @@ create_movement_probability_results_std_err_4d <- function (pars,
     #---------------- Draw parameters -----------------------------------------#
 
     par_devs <- MASS::mvrnorm(n = 1,
-                              mu = rep(0, np),
+                              mu = rep(0, np * ng),
                               Sigma = covs,
                               empirical = FALSE)
     par_draw <- pars + par_devs

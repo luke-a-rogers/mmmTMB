@@ -16,4 +16,19 @@ test_that("mmmTMB() returns a list of class 'mmmTMB'", {
 	testthat::expect_s3_class(fit_list, "mmmTMB")
 })
 
-
+test_that("mmmTMB() computes SEs for size class release and recovery data", {
+  # Fit
+  fit_list <- mmmTMB(
+    released_3d = sim_released_3d_size,
+    recovered_5d = sim_recovered_5d_size,
+    capture_rate_2d = sim_capture_rate_2d,
+    report_ratio_2d = sim_report_ratio_2d,
+    tag_loss_rate = 0.02,
+    imm_loss_ratio = 0.1,
+    template_2d = sim_template_2d,
+    nlminb_loops = 5,
+    openmp_cores = floor(parallel::detectCores() / 2))
+  # Tests
+  testthat::expect_true(sum(
+    which(is.na(fit_list$results$movement_probability_results))) == 0)
+})
