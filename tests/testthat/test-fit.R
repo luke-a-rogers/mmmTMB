@@ -26,7 +26,8 @@ test_that("mmmTMB() computes SEs for size class release and recovery data", {
     tag_loss_rate = 0.02,
     imm_loss_ratio = 0.1,
     template_2d = sim_template_2d,
-    nlminb_loops = 5,
+    nlminb_loops = 10,
+    newton_steps = 1,
     openmp_cores = floor(parallel::detectCores() / 2))
   # Tests
   testthat::expect_true(sum(
