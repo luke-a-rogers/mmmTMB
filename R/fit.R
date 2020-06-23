@@ -212,7 +212,7 @@ mmmTMB <- function (released_3d, # Data
   if (!is.null(capture_map_2d)) {
     tmb_map <- c(tmb_map, list(log_capture_bias_2d = as.factor(capture_map_2d)))
   } else {
-    tmb_map <- c(tmb_map, list(log_capture_bias_2d = factor(seq_len(na * ng))))
+    tmb_map <- c(tmb_map, list(log_capture_bias_2d = factor(rep(1, na * ng))))
   }
 
   # Map off log_dispersion?
@@ -316,7 +316,7 @@ mmmTMB <- function (released_3d, # Data
     covs = covs,
     dims = c(nv, np, nt, na, ng),
     tp_2d = template_2d,
-    results_units = result_units,
+    result_units = result_units,
     n_draws = 1000)
   tictoc::toc()
 

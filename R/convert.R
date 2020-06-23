@@ -98,7 +98,7 @@ create_movement_probability_results_std_err_4d <- function (pars,
                                                             covs,
                                                             dims,
                                                             tp_2d,
-                                                            results_units,
+                                                            result_units,
                                                             n_draws = 1000) {
 
   #---------------- Check arguments -------------------------------------------#
@@ -121,7 +121,7 @@ create_movement_probability_results_std_err_4d <- function (pars,
     #---------------- Draw parameters -----------------------------------------#
 
     par_devs <- MASS::mvrnorm(n = 1,
-                              mu = rep(0, np * ng),
+                              mu = rep(0, nv * np * ng),
                               Sigma = covs,
                               empirical = FALSE)
     par_draw <- pars + par_devs
@@ -145,7 +145,7 @@ create_movement_probability_results_std_err_4d <- function (pars,
 
     mpr_se_5d[, , , , i] <- create_movement_probability_results_4d(
       mp_4d = mp_4d,
-      result_units = results_units
+      result_units = result_units
     )
   }
 
@@ -156,7 +156,7 @@ create_movement_probability_results_std_err_4d <- function (pars,
     for (ca in seq_len(na)) {
       for (cv in seq_len(nv)) {
         for (mg in seq_len(ng)) {
-          mpr_se_4d[pa, ca, cv, mg] <- sd(mpr_se_5d[pa, ca, cv, mg, ])
+          mpr_se_4d[pa, ca, cv, mg] <- sd(mpr_se_5d[pa, ca, cv, mg, ], na.rm = TRUE)
         }
       }
     }
@@ -171,7 +171,7 @@ create_movement_probability_results <- function (pars,
                                                  covs,
                                                  dims,
                                                  tp_2d,
-                                                 results_units,
+                                                 result_units,
                                                  n_draws = 1000) {
 
   #---------------- Check arguments -------------------------------------------#
@@ -205,7 +205,7 @@ create_movement_probability_results <- function (pars,
 
   mpr_4d <- create_movement_probability_results_4d(
     mp_4d = mp_4d,
-    result_units = results_units
+    result_units = result_units
   )
 
   #---------------- Compute standard errors array -----------------------------#
@@ -215,7 +215,7 @@ create_movement_probability_results <- function (pars,
     covs = covs,
     dims = dims,
     tp_2d = tp_2d,
-    results_units = results_units,
+    result_units = result_units,
     n_draws = n_draws
   )
 
