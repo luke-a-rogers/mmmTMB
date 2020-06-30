@@ -19,7 +19,8 @@ Imports:
     RcppEigen,
     TMB,
     tictoc,
-    MASS
+    MASS,
+    ggplot2
 LinkingTo: 
     Rcpp,
     RcppEigen,
@@ -27,4 +28,7 @@ LinkingTo:
 Depends: 
     R (>= 2.10)
 Suggests: 
-    testthat
+    testthat,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

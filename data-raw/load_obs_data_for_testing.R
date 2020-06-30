@@ -22,7 +22,7 @@ pattern_size <- 0
 newton_steps <- 0
 nlminb_loops <- 5
 openmp_cores <- floor(parallel::detectCores() / 2)
-capture_map_2d <- array(c(1, 1, 1, 1, 1, 2, 3, 3, 4, 4), dim = c(10, 1))
+capture_map_2d <- array(rep(1, 10), dim = c(10, 1))
 structure_list <- NULL
 parameter_list <- NULL
 optimizer_list <- NULL
