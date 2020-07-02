@@ -24,9 +24,9 @@ plot.mmmTMB <- function (x = NULL,
                          ylab = "Area From",
                          area_names = NULL,
                          font_size_probs = 3,
-                         font_nudge_probs = 1,
-                         font_size_stderr = 1.5,
-                         font_nudge_stderr = 1,
+                         font_nudge_probs = 0.15,
+                         font_size_stderr = 2,
+                         font_nudge_stderr = 0.15,
                          legend_name = "Estimate",
                          legend_position = "right") {
 
@@ -37,8 +37,12 @@ plot.mmmTMB <- function (x = NULL,
 
   if (is.element("mmmTMB", class(x))) {
     x <- x$results$movement_probability_results
+    x_inds <- which(x$Class == class)
+    x <- x[x_inds,]
   } else if (is.data.frame(x)) {
     # TODO: Check appropriate columns are present
+    x_inds <- which(x$Class == class)
+    x <- x[x_inds,]
   } else if (!is.null(x)) {
     warning("x not as expected")
   }

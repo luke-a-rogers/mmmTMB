@@ -11,9 +11,9 @@
   ylab = "Area From",
   area_names = NULL,
   font_size_probs = 3,
-  font_nudge_probs = 1,
-  font_size_stderr = 1.5,
-  font_nudge_stderr = 1,
+  font_nudge_probs = 0.15,
+  font_size_stderr = 2,
+  font_nudge_stderr = 0.15,
   legend_name = "Estimate",
   legend_position = "right"
 )
