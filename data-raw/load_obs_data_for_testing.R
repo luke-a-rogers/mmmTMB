@@ -5,6 +5,10 @@ load("~/github/sablefishData/data/obs_capture_rate_2d_mon_10a.rda")
 load("~/github/sablefishData/data/obs_report_ratio_2d_mon_10a.rda")
 load("~/github/sablefishData/data/obs_template_2d_mon_10a.rda")
 
+# Load fit
+load("~/github/sablefishFit/data/fit_obs_mon_10a_size_sml_static_size_bias_nb1.rda")
+fit_list <- fit_obs_mon_10a_size_sml_static_size_bias_nb1
+
 # Define arguments for testing
 released_3d <- obs_released_3d_mon_10a_pool_sml
 recovered_5d <- obs_recovered_5d_mon_10a_pool_sml
