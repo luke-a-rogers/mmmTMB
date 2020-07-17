@@ -76,7 +76,7 @@ plot.mmmTMB <- function (x = NULL,
     ggplot2::theme_minimal() +
     ggplot2::geom_text(
       mapping = ggplot2::aes(
-        label = round(Estimate, 2),
+        label = sensibly_round(Estimate, 2),
         col = as.factor(ifelse(Estimate >= 0.5, 0, 1))),
       fontface = "plain",
       nudge_y = font_nudge_probs,
@@ -84,7 +84,7 @@ plot.mmmTMB <- function (x = NULL,
     # Add SE
     ggplot2::geom_text(
       mapping = ggplot2::aes(
-        label = paste0("(", round(SE, 3), ")"),
+        label = paste0("(", sensibly_round(SE, 3), ")"),
         col = as.factor(ifelse(Estimate >= 0.5, 0, 1))),
       fontface = "plain",
       nudge_y = -font_nudge_stderr,
@@ -113,4 +113,27 @@ plot.mmmTMB <- function (x = NULL,
         face = "plain",
         color = "black",
         margin = ggplot2::margin(t = -2)))
+}
+
+
+#' Sensibly Round
+#'
+#' @param x [numeric()] Value to round
+#' @param digits [numeric] Number of digits
+#'
+#' @return [character()]
+#' @export
+#'
+#' @examples
+#' sensibly_round(c(0.0005, 0.0010, 0.0015), 3)
+#'
+sensibly_round <- function (x, digits) {
+  y <- character(length = length(x))
+  ind_low <- which(x < 10^(-digits))
+  ind_high <- which(x >= 10^(-digits))
+  # Assign
+  y[ind_low] <- paste0("<", sub(".", "", 10^(-digits)))
+  y[ind_high] <- as.character(round(x[ind_high], digits))
+  # Return
+  y
 }
