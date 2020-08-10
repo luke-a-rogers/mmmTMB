@@ -37,14 +37,13 @@ recovery becomes possible, \code{>= 1}.}
 \item{result_units}{\code{\link[=integer]{integer()}} Results time unit as a multiple of the data
 time unit. See details.}
 
-\item{time_process}{\code{\link[=integer]{integer()}} Timevarying process for movement
-probabilities. One of 0: Constant; 1: RW; 2: AR1.}
+\item{time_process}{\code{\link[=integer]{integer()}} Time process for movement
+rates. 0: Constant; 1: Time varying}
 
 \item{time_pattern}{\code{\link[=integer]{integer()}} Timevarying pattern for movement
 probabilities. One of 0: Constant; 1: Stepped; 2: Cyclical. See Details.}
 
-\item{pattern_size}{\code{\link[=integer]{integer()}} Number of time units in each
-\code{time_pattern} step or cycle.}
+\item{pattern_size}{\code{\link[=integer]{integer()}} Number of levels in the \code{time_pattern}.}
 
 \item{newton_steps}{\code{\link[=integer]{integer()}} Number of Newton optimization steps}
 

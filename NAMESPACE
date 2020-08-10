@@ -3,5 +3,6 @@
 S3method(plot,mmmTMB)
 export(mmmTMB)
 export(mmmTMBcontrol)
+export(sensibly_round)
 importFrom(Rcpp,sourceCpp)
 useDynLib(mmmTMB, .registration = TRUE)
