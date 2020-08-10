@@ -22,13 +22,3 @@ with `OpenMP` support.
 ``` r
 devtools::install_github("luke-a-rogers/mmmTMB")
 ```
-
-(Please wait until the first stable release)
-
-## Functionality
-
-TBA
-
-## Examples
-
-TBA
