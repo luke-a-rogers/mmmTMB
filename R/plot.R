@@ -137,3 +137,60 @@ sensibly_round <- function (x, digits) {
   # Return
   y
 }
+
+barplot.mmmTMB <- function (x = NULL, area_names = NULL) {
+
+  #---------------- Check arguments -------------------------------------------#
+
+
+  #---------------- Extract movement results data -----------------------------#
+
+  if (is.element("mmmTMB", class(x))) {
+    x <- x$results$movement_probability_results
+    # x_inds <- which(x$Class == class)
+    # x <- x[x_inds,]
+  } else if (is.data.frame(x)) {
+    # TODO: Check appropriate columns are present
+    # x_inds <- which(x$Class == class)
+    # x <- x[x_inds,]
+  } else if (!is.null(x)) {
+    warning("x not as expected")
+  }
+
+  #---------------- Convert columns to factor ---------------------------------#
+
+  x$Area_From <- factor(
+    x$Area_From,
+    levels = sort(unique(x$Area_From), decreasing = FALSE))
+  x$Area_To <- factor(
+    x$Area_To,
+    levels = sort(unique(x$Area_To)))
+  x$Class <- factor(
+    x$Class,
+    levels = sort(unique(x$Class))
+  )
+
+  #---------------- Construct geom object -------------------------------------#
+
+  ggplot2::ggplot(
+    data = x,
+    mapping = ggplot2::aes(x = Pattern_Time, y = Estimate, fill = Class)
+    ) +
+    ggplot2::geom_col(position = ggplot2::position_dodge()) +
+    ggplot2::geom_errorbar(
+      ggplot2::aes(
+        ymin = Estimate - SE,
+        ymax = Estimate + SE),
+        width = 0.2,
+        position = ggplot2::position_dodge(0.9)
+    ) +
+    ggplot2::scale_fill_brewer(palette = "Blues") +
+    ggplot2::facet_grid(
+      rows = ggplot2::vars(Area_From),
+      cols = ggplot2::vars(Area_To),
+      switch = "y"
+    ) +
+    ggplot2::theme_classic() +
+    ggplot2::scale_y_continuous(position = "right")
+
+}
