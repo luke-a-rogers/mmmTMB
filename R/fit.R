@@ -39,12 +39,11 @@ NULL
 #' @param error_family [integer()] One of 0: Poisson; 1: NB1; or 2: NB2
 #' @param result_units [integer()] Results time unit as a multiple of the data
 #' time unit. See details.
-#' @param time_process [integer()] Timevarying process for movement
-#' probabilities. One of 0: Constant; 1: RW; 2: AR1.
+#' @param time_process [integer()] Time process for movement
+#' rates. 0: Constant; 1: Time varying
 #' @param time_pattern [integer()] Timevarying pattern for movement
 #' probabilities. One of 0: Constant; 1: Stepped; 2: Cyclical. See Details.
-#' @param pattern_size [integer()] Number of time units in each
-#' \code{time_pattern} step or cycle.
+#' @param pattern_size [integer()] Number of levels in the \code{time_pattern}.
 #' @param newton_steps [integer()] Number of Newton optimization steps
 #' @param nlminb_loops [integer()] Number of times to run [stats::nlminb()]
 #' optimization.
@@ -166,7 +165,20 @@ mmmTMB <- function (released_3d, # Data
   if (time_process == 0) {
     nv <- 1
     movement_index <- rep(0, nt)
-  } # TODO: else if (time_process > 0) {}
+  } else {
+    if (time_pattern == 0) {
+      nv <- 1
+      movement_index <- rep(0, nt)
+    } else if (time_pattern == 1) {
+      nv <- pattern_size
+      movement_index <- rep(seq_len(nv) - 1, each = ceiling(nt/nv))[seq_len(nt)]
+    } else if (time_pattern == 2) {
+      nv <- pattern_size
+      movement_index <- rep((seq_len(nv) - 1), ceiling(nt/nv))[seq_len(nt)]
+    } else {
+      warning("time_pattern not implemented")
+    }
+  }
 
   #---------------- Create the data list --------------------------------------#
 
@@ -309,7 +321,8 @@ mmmTMB <- function (released_3d, # Data
   if (time_process == 0) {
     covs <- subset_by_name(sd_report$cov.fixed, "movement_parameters_3d")
   } else {
-    warning("Parameters are a random effect: Figure out where to access covs")
+    # warning("Parameters are a random effect: Figure out where to access covs")
+    covs <- subset_by_name(sd_report$cov.fixed, "movement_parameters_3d")
   }
   mpr_df <- create_movement_probability_results(
     pars = pars,
