@@ -138,6 +138,16 @@ sensibly_round <- function (x, digits) {
   y
 }
 
+#' Barplot Movement Probabilities from an 'mmmTMB' Object
+#'
+#' @param x An object of class \code{mmmTMB}
+#' @param area_names [character()] Vector of area names
+#'
+#' @return An object with class \code{gg} and \code{ggplot}
+#' @export
+#'
+#' @examples
+#'
 barplot.mmmTMB <- function (x = NULL, area_names = NULL) {
 
   #---------------- Check arguments -------------------------------------------#
