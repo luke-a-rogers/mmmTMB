@@ -115,6 +115,114 @@ plot.mmmTMB <- function (x = NULL,
         margin = ggplot2::margin(t = -2)))
 }
 
+#' Lineplot Movement Rates from an 'mmmTMB' Object
+#'
+#' @param x An object of class \code{mmmTMB}
+#' @param x_name [character()] Axis name
+#' @param y_name [character()] Axis name
+#' @param x_breaks [numeric()] Axis breaks
+#' @param x_labels [character()] Axis labels
+#' @param area_names [character()] Vector of area names
+#' @param class_names [character()] Vector of class names
+#' @param error_alpha [numeric()] Error bar alpha
+#' @param error_width [numeric()] Error bar width
+#' @param legend_title [character()] Legend title
+#' @param legend_position [character()] Legend position
+#'
+#' @return An object with class \code{gg} and \code{ggplot}
+#'
+#' @export
+#'
+#' @examples
+#'
+lineplot <- function (x = NULL,
+                      x_name = "Year",
+                      y_name = "Annual Movement Rate",
+                      x_breaks = NULL,
+                      x_labels = NULL,
+                      area_names = NULL,
+                      class_names = NULL,
+                      error_alpha = 1,
+                      error_width = 0.2,
+                      legend_title = "Length Class",
+                      legend_position = "right") {
+
+  #---------------- Check arguments -------------------------------------------#
+
+
+  #---------------- Extract movement results data -----------------------------#
+
+  if (is.element("mmmTMB", class(x))) {
+    d <- x$results$movement_probability_results
+  } else if (is.data.frame(x)) {
+    # TODO: Check appropriate columns are present
+    d <- x
+  } else if (!is.null(x)) {
+    warning("x not as expected")
+  }
+
+  #---------------- Convert columns to factor ---------------------------------#
+
+  d$Area_From <- factor(
+    d$Area_From,
+    levels = sort(unique(d$Area_From)))
+  d$Area_To <- factor(
+    d$Area_To,
+    levels = sort(unique(d$Area_To)))
+  d$Class <- factor(
+    d$Class,
+    levels = sort(unique(d$Class)))
+
+  #---------------- Create area labels ----------------------------------------#
+
+  names(area_names) <- as.character(seq_along(area_names))
+
+  #---------------- Construct geom object -------------------------------------#
+
+  ggplot2::ggplot(data = d) +
+    # ggplot2::geom_point(
+    #   ggplot2::aes(x = Pattern_Time, y = Estimate, colour = Class)) +
+    ggplot2::geom_errorbar(
+      ggplot2::aes(
+        x = Pattern_Time,
+        y = Estimate,
+        colour = Class,
+        ymin = Estimate - SE,
+        ymax = Estimate + SE),
+      alpha = error_alpha,
+      width = error_width) +
+    ggplot2::geom_line(
+      ggplot2::aes(x = Pattern_Time, y = Estimate, colour = Class)) +
+    ggplot2::scale_color_brewer(
+      palette = "Blues",
+      labels = class_names) +
+    ggplot2::facet_grid(
+      rows = ggplot2::vars(Area_From),
+      cols = ggplot2::vars(Area_To),
+      labeller = ggplot2::labeller(
+        Area_From = area_names,
+        Area_To = area_names),
+      switch = "y"
+    ) +
+    ggplot2::scale_x_continuous(
+      name = paste0("\n", x_name),
+      breaks = x_breaks,
+      labels = x_labels) +
+    ggplot2::scale_y_continuous(
+      name = paste0(y_name, "\n"),
+      position = "right") +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      panel.grid.major = ggplot2::element_blank(),
+      panel.grid.minor = ggplot2::element_blank(),
+      strip.background = ggplot2::element_rect(
+        colour = "black",
+        fill = "white",
+        size = 0.75,
+        linetype = "solid"),
+      legend.position = legend_position) +
+    ggplot2::labs(colour = legend_title)
+}
 
 #' Sensibly Round
 #'
