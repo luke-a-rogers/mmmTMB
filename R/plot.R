@@ -122,6 +122,8 @@ plot.mmmTMB <- function (x = NULL,
 #' @param y_name [character()] Axis name
 #' @param x_breaks [numeric()] Axis breaks
 #' @param x_labels [character()] Axis labels
+#' @param x_labels_angle [numeric()] Axis labels angle
+#' @param x_labels_hjust [numeric()] Axis labels hjust
 #' @param area_names [character()] Vector of area names
 #' @param class_names [character()] Vector of class names
 #' @param error_alpha [numeric()] Error bar alpha
@@ -140,6 +142,8 @@ lineplot <- function (x = NULL,
                       y_name = "Annual Movement Rate",
                       x_breaks = NULL,
                       x_labels = NULL,
+                      x_labels_angle = 0,
+                      x_labels_hjust = 0,
                       area_names = NULL,
                       class_names = NULL,
                       error_alpha = 1,
@@ -213,6 +217,7 @@ lineplot <- function (x = NULL,
       position = "right") +
     ggplot2::theme_bw() +
     ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = x_labels_angle, hjust = x_labels_hjust),
       panel.grid.major = ggplot2::element_blank(),
       panel.grid.minor = ggplot2::element_blank(),
       strip.background = ggplot2::element_rect(

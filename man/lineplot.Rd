@@ -10,6 +10,8 @@ lineplot(
   y_name = "Annual Movement Rate",
   x_breaks = NULL,
   x_labels = NULL,
+  x_labels_angle = 0,
+  x_labels_hjust = 0,
   area_names = NULL,
   class_names = NULL,
   error_alpha = 1,
@@ -28,6 +30,10 @@ lineplot(
 \item{x_breaks}{\code{\link[=numeric]{numeric()}} Axis breaks}
 
 \item{x_labels}{\code{\link[=character]{character()}} Axis labels}
+
+\item{x_labels_angle}{\code{\link[=numeric]{numeric()}} Axis labels angle}
+
+\item{x_labels_hjust}{\code{\link[=numeric]{numeric()}} Axis labels hjust}
 
 \item{area_names}{\code{\link[=character]{character()}} Vector of area names}
 
