@@ -182,7 +182,8 @@ Type objective_function<Type>::operator() ()
                 (1 - exp(-capture_bias_2d(ra, mg) *
                 capture_rate_2d(rt, ra))) * report_ratio_2d(rt, ra);
               // Was occupancy predicted?
-              if (predicted_occupancy_5d(mt, rt, ma, ra, mg) > 0) {
+              // Quick fix: replace predicted_occupancy_5d by predicted_recovered_5d
+              if (predicted_recovered_5d(mt, rt, ma, ra, mg) > 0) {
                 // Was the recapture time later than the delay?
                 if (rt > (mt + recapture_delay - Type(1))) {
                   // Calculate the negative log likelihood
