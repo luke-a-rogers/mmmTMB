@@ -364,6 +364,16 @@ mmmTMB <- function (released_3d, # Data
                        capture_bias = cbr_df,
                        dispersion = dsp_df)
 
+  #---------------- Compute AIC -----------------------------------------------#
+
+  num_doubles_or_na <- sum(unlist(lapply(
+    tmb_map,
+    function(x) length(x) - length(unique(x)) + length(which(is.na(unique(x))))
+  )))
+  k <- length(unlist(parameter_list)) - num_doubles_or_na
+  nll <- tmb_opt$objective
+  aic <- 2 * k + 2 * nll
+
   #---------------- Stop the clock --------------------------------------------#
 
   tictoc::toc()
@@ -381,7 +391,8 @@ mmmTMB <- function (released_3d, # Data
     random     = tmb_random,
     sd_report  = sd_report, # value, sd, cov, par.fixed, cov.fixed, pdHess, gradient.fixed, env
     conv       = conv, # final_grads, bad_eig
-    mgc        = mgc),
+    mgc        = mgc,
+    aic        = aic),
     class      = "mmmTMB")
 }
 
