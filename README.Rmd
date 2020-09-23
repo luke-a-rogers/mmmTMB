@@ -29,4 +29,5 @@ Installation and use of the `mmmTMB` package requires a [C++ compiler](https://s
 devtools::install_github("luke-a-rogers/mmmTMB")
 ```
 
-
+## Parallel processing
+On my macOS machine running R 3.6.3 and following the R toolchain install instructions from [The Coatless Professor](https://thecoatlessprofessor.com/programming/cpp/r-compiler-tools-for-rcpp-on-macos-before-r-4.0.0/) I made a new file `src/Makevars` with one line of code `PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)` followed by an empty line to make use of parallel processing via OpenMP.
