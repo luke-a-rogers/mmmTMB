@@ -22,3 +22,6 @@
 # Latex
 *.pdf
 inst/doc
+
+# Makevars
+Makevars
