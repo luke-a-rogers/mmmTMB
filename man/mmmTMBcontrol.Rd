@@ -7,14 +7,14 @@
 mmmTMBcontrol(eval.max = 10000, iter.max = 10000, ...)
 }
 \arguments{
-\item{eval.max}{\link{numeric(1)} Maximum number of evaluations of the objective
+\item{eval.max}{Maximum number of evaluations of the objective
 function allowed.}
 
-\item{iter.max}{\link{numeric(1)} Maximum number of iterations allowed.}
+\item{iter.max}{Maximum number of iterations allowed.}
 
 \item{...}{Anything else. See the 'Control parameters' section of
-\code{\link[stats:nlminb]{stats::nlminb()}}.}
+\code{stats::nlminb()}.}
 }
 \description{
-Any arguments to pass to \code{\link[stats:nlminb]{stats::nlminb()}}.
+Any arguments to pass to \code{stats::nlminb()}.
 }

@@ -7,10 +7,10 @@
 mmmFit(
   data,
   parameters,
-  model,
-  random = NULL,
+  structure,
   map = NULL,
-  nlminb_control = mmmTMBcontrol()
+  random = NULL,
+  control = mmmTMBcontrol()
 )
 }
 \arguments{
@@ -18,11 +18,11 @@ mmmFit(
 
 \item{parameters}{A list of initial parameter values. See details.}
 
-\item{model}{A list of values that define the model. See details.}
-
-\item{random}{A character vector of parameters to treat as random effects.}
+\item{structure}{A list of values that define the model. See details.}
 
 \item{map}{A list of values to override defaults.}
+
+\item{random}{A character vector of parameters to treat as random effects.}
 
 \item{nlminb_control}{A list. See \code{mmmTMBcontrol()}.}
 }
@@ -30,7 +30,7 @@ mmmFit(
 A list of class \code{mmmFit} and \code{mmmTMB}.
 }
 \description{
-Fit a Markovian Movement Model
+Estimate movement rates
 }
 \details{
 The following must be included in the \code{data} list: \itemize{
@@ -47,7 +47,7 @@ values, or included in the \code{parameters} list along with initial values
 \item \code{F} An array of instantaneous fishing mortality rates. \item
 \code{b} A vector of selectivity values. \item \code{h} A scalar
 instantaneous tag loss rate. \item \code{c} A scalar mean initial tag loss
-rate.} The following can be included in the \code{model} list, or omitted
+rate.} The following can be included in the \code{structure} list, or omitted
 to be assigned default values \itemize{ \item \code{liberty} A vector of
 length two specifying the minimum and maximum time at liberty. \item
 \code{family} An integer specifying the error family 0: Poisson; 1: NB1; 2:
