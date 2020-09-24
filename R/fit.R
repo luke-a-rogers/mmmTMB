@@ -7,9 +7,11 @@ NULL
 
 #' Fit a Markovian Movement Model
 #'
+#' @description Estimate movement rates
+#'
 #' @param data A list of named data objects. See details.
 #' @param parameters A list of initial parameter values. See details.
-#' @param model A list of values that define the model. See details.
+#' @param structure A list of values that define the model. See details.
 #' @param random A character vector of parameters to treat as random effects.
 #' @param map A list of values to override defaults.
 #' @param nlminb_control A list. See \code{mmmTMBcontrol()}.
@@ -28,7 +30,7 @@ NULL
 #'   \item \code{F} An array of instantaneous fishing mortality rates. \item
 #'   \code{b} A vector of selectivity values. \item \code{h} A scalar
 #'   instantaneous tag loss rate. \item \code{c} A scalar mean initial tag loss
-#'   rate.} The following can be included in the \code{model} list, or omitted
+#'   rate.} The following can be included in the \code{structure} list, or omitted
 #'   to be assigned default values \itemize{ \item \code{liberty} A vector of
 #'   length two specifying the minimum and maximum time at liberty. \item
 #'   \code{family} An integer specifying the error family 0: Poisson; 1: NB1; 2:
@@ -47,25 +49,153 @@ NULL
 #'
 mmmFit <- function(data,
                    parameters,
-                   model,
-                   random = NULL,
+                   structure,
                    map = NULL,
-                   nlminb_control = mmmTMBcontrol()) {
+                   random = NULL,
+                   control = mmmTMBcontrol()) {
 
   #---------------- Start the clock -------------------------------------------#
 
   tictoc::tic("mmmFit")
 
+  #---------------- Check main arguments --------------------------------------#
+
+  cat("checking main arguments \n")
+  # TODO
+
+
+
   #---------------- Unpack arguments ------------------------------------------#
 
+  cat("unpacking arguments \n")
+  # TODO
 
 
-  #---------------- Create the data list --------------------------------------#
+  # openmp_cores <- structure$openmp_cores
+  # diag(I) <- 0L
+
+  #---------------- Check constituent arguments -------------------------------#
+
+  cat("checking constituent arguments \n")
+  # TODO
+
+
+  #---------------- Create the tmb_data ---------------------------------------#
+
+  cat("creating tmb_data \n")
+  # TODO
+
+
+  #---------------- Create the tmb_parameters ---------------------------------#
+
+  cat("creating tmb_parameters \n")
+  # TODO
+
+
+  #---------------- Create the tmb_map ----------------------------------------#
+
+  cat("creating tmb_map \n")
+  # TODO
+
+
+  #---------------- Create the tmb_random -------------------------------------#
+
+  cat("creating tmb_random \n")
+  # TODO
+
+
+  #---------------- Define the number of cores --------------------------------#
+
+  cat("setting openmp_cores")
+  if (!is.null(openmp_cores)) {TMB::openmp(n = openmp_cores)}
+
+  #---------------- Create the ADFun object -----------------------------------#
+
+  tictoc::tic("adfun")
+  cat("creating adfun \n")
+  adfun <- TMB::MakeADFun(data = tmb_data,
+                          parameters = tmb_parameters,
+                          map = tmb_map,
+                          random = tmb_random,
+                          DLL = "mmmTMB")
+  tictoc::toc()
+
+  #---------------- Optimize the objective function ---------------------------#
+
+  tictoc::tic("nlminb")
+  cat("\noptimizing objective\n")
+  cat("\nmodel mgc \n")
+
+  # Optimize
+  model <- stats::nlminb(
+    start = adfun$par,
+    objective = adfun$fn,
+    gradient = adfun$gr,
+    control = control)
+
+  # Iterate optimization
+  if (nlminb_loops > 0) {
+    cat("\nrunning extra nlminb loops \n")
+    for (i in seq(2, nlminb_loops, length = max(0, nlminb_loops - 1))) {
+      cat(paste0("running nlminb loop #", i, "\n"))
+      tmp <- model[c("iterations", "evaluations")]
+      model <- stats::nlminb(
+        start = model$par,
+        objective = adfun$fn,
+        gradient = adfun$gr,
+        control = control)
+      model[["iterations"]] <- model[["iterations"]] + tmp[["iterations"]]
+      model[["evaluations"]] <- model[["evaluations"]] + tmp[["evaluations"]]
+    }
+  }
+
+  # Perform Newton steps
+  if (newton_steps > 0) {
+    cat("\nrunning newton steps \n")
+    for (i in seq_len(newton_steps)) {
+      cat(paste0("running newton step #", i, "\n"))
+      g <- as.numeric(adfun$gr(model$par))
+      h <- optimHess(model$par, fn = adfun$fn, gr = adfun$gr)
+      model$par <- model$par - solve(h, g)
+      model$objective <- adfun$fn(model$par)
+    }
+  }
+  tictoc::toc()
+
+  #---------------- Create sd_report ------------------------------------------#
+
+  tictoc::tic("sd_report")
+  cat("creating sd_report")
+  cat("\nsd_report mgc \n")
+  sd_report <- TMB::sdreport(adfun)
+  conv_list <- get_convergence_diagnostics(sd_report)
+  mgc <- max(abs(conv_list$final_grads))
+  tictoc::toc()
+
+  #---------------- Compute goodness of fit -----------------------------------#
+
+  tictoc::tic("goodness")
+  cat("computing goodness of fit\n")
+  # TODO
 
 
 
 
 
+  tictoc::toc()
+
+  #---------------- Compute results -------------------------------------------#
+
+  tictoc::tic("results")
+  cat("computing results")
+  # TODO
+
+
+
+
+
+
+  tictoc::toc()
 
   #---------------- Stop the clock --------------------------------------------#
 
@@ -73,11 +203,24 @@ mmmFit <- function(data,
 
   #---------------- Return an mmmTMB object -----------------------------------#
 
-  structure(list(),
-    class      = c("mmmFit", "mmmTMB"))
+  cat("\nreturning mmmTMB object\n")
+  structure(list(
+    data        = data_list,
+    parameters  = parameters_list,
+    structure   = structure,
+    random      = random,
+    map         = map_list,
+    control     = control,
+    initial     = initial_list,
+    results     = results_list,
+    sd_report   = sd_report,
+    convergence = conv_list,
+    goodness    = goodness_list,
+    adfun       = adfun,
+    model       = model,
+    mgc         = mgc),
+    class       = c("mmmFit", "mmmTMB"))
 }
-
-
 
 
 
@@ -476,13 +619,13 @@ mmmTMB <- function (released_3d, # Data
 
 #' Optimization control options
 #'
-#' Any arguments to pass to [stats::nlminb()].
+#' Any arguments to pass to \code{stats::nlminb()}.
 #'
-#' @param eval.max [numeric(1)] Maximum number of evaluations of the objective
+#' @param eval.max Maximum number of evaluations of the objective
 #' function allowed.
-#' @param iter.max [numeric(1)] Maximum number of iterations allowed.
+#' @param iter.max Maximum number of iterations allowed.
 #' @param ... Anything else. See the 'Control parameters' section of
-#'   [stats::nlminb()].
+#'   \code{stats::nlminb()}.
 #'
 #' @export
 #'
