@@ -3,6 +3,7 @@
 S3method(barplot,mmmTMB)
 S3method(plot,mmmTMB)
 export(lineplot)
+export(mmmFit)
 export(mmmTMB)
 export(mmmTMBcontrol)
 export(sensibly_round)
