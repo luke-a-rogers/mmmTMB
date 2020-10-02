@@ -2,6 +2,7 @@
 
 S3method(barplot,mmmTMB)
 S3method(plot,mmmTMB)
+export(arrayT)
 export(lineplot)
 export(mmmFit)
 export(mmmTMB)

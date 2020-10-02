@@ -20,7 +20,8 @@ Imports:
     TMB,
     tictoc,
     MASS,
-    ggplot2
+    ggplot2,
+    parallel
 LinkingTo: 
     Rcpp,
     RcppEigen,

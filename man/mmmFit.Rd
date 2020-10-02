@@ -7,7 +7,7 @@
 mmmFit(
   data,
   parameters,
-  structure,
+  settings = NULL,
   map = NULL,
   random = NULL,
   control = mmmTMBcontrol()
@@ -18,7 +18,7 @@ mmmFit(
 
 \item{parameters}{A list of initial parameter values. See details.}
 
-\item{structure}{A list of values that define the model. See details.}
+\item{settings}{A list of values that define the model. See details.}
 
 \item{map}{A list of values to override defaults.}
 
@@ -34,28 +34,27 @@ Estimate movement rates
 }
 \details{
 The following must be included in the \code{data} list: \itemize{
-\item \code{T} An array holding tagged release counts. See
-\code{mmmArrayify}. \item \code{R} An array holding recovered counts. See
-\code{mmmArrayify}. \item \code{I} A square binary matrix indicating which
-direct movement rates to estimate.} The following can be optionally
-included in the \code{data} list and are otherwise excluded from the model
-\itemize{ \item \code{lambda} An array of tag reporting rates. } The
-following can be optionally included in the \code{data} list to be treated
-as data, or omitted to be treated as parameters with default initial
-values, or included in the \code{parameters} list along with initial values
-\itemize{ \item \code{M} An array of instantaneous natural mortality rates.
-\item \code{F} An array of instantaneous fishing mortality rates. \item
-\code{b} A vector of selectivity values. \item \code{h} A scalar
-instantaneous tag loss rate. \item \code{c} A scalar mean initial tag loss
-rate.} The following can be included in the \code{structure} list, or omitted
-to be assigned default values \itemize{ \item \code{liberty} A vector of
-length two specifying the minimum and maximum time at liberty. \item
-\code{family} An integer specifying the error family 0: Poisson; 1: NB1; 2:
-NB2. \item \code{timestep} An integer specifying the results time step as a
-multiple of the data time step. \item \code{nlminb_loops} An integer
-specifying the number of \code{nlminb} loops. \item \code{newton_steps} An
-integer specifying the number of Newton steps. \item \code{openmp_cores} An
-integer specifying the number of \code{OpenMP} parallel cores.}
+\item \code{T} An array holding tagged release counts. See \code{arrayT()}.
+\item \code{R} An array holding recovered counts. See \code{arrayR()}.
+\item \code{I} A square binary matrix indicating which direct movement
+rates to estimate.} The following can be optionally included in the
+\code{data} list and are otherwise excluded from the model \itemize{ \item
+\code{lambda} An array of tag reporting rates. } The following can be
+optionally included in the \code{data} list to be treated as data, or
+omitted to be treated as parameters with default initial values, or
+included in the \code{parameters} list along with initial values \itemize{
+\item \code{M} An array of instantaneous natural mortality rates. \item
+\code{F} An array of instantaneous fishing mortality rates. \item \code{b}
+A vector of selectivity values. \item \code{h} A scalar instantaneous tag
+loss rate. \item \code{c} A scalar mean initial tag loss rate.} The
+following can be included in the \code{settings} list, or omitted to be
+assigned default values \itemize{ \item \code{family} An integer specifying
+the error family 0: Poisson; 1: NB1; 2: NB2. \item \code{timestep} An
+integer specifying the results time step as a multiple of the data time
+step. \item \code{nlminb_loops} An integer specifying the number of
+\code{nlminb} loops. \item \code{newton_steps} An integer specifying the
+number of Newton steps. \item \code{openmp_cores} An integer specifying the
+number of \code{OpenMP} parallel cores.}
 }
 \examples{
 
