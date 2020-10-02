@@ -11,34 +11,33 @@ NULL
 #'
 #' @param data A list of named data objects. See details.
 #' @param parameters A list of initial parameter values. See details.
-#' @param structure A list of values that define the model. See details.
+#' @param settings A list of values that define the model. See details.
 #' @param random A character vector of parameters to treat as random effects.
 #' @param map A list of values to override defaults.
 #' @param nlminb_control A list. See \code{mmmTMBcontrol()}.
 #'
 #' @details The following must be included in the \code{data} list: \itemize{
-#'   \item \code{T} An array holding tagged release counts. See
-#'   \code{mmmArrayify}. \item \code{R} An array holding recovered counts. See
-#'   \code{mmmArrayify}. \item \code{I} A square binary matrix indicating which
-#'   direct movement rates to estimate.} The following can be optionally
-#'   included in the \code{data} list and are otherwise excluded from the model
-#'   \itemize{ \item \code{lambda} An array of tag reporting rates. } The
-#'   following can be optionally included in the \code{data} list to be treated
-#'   as data, or omitted to be treated as parameters with default initial
-#'   values, or included in the \code{parameters} list along with initial values
-#'   \itemize{ \item \code{M} An array of instantaneous natural mortality rates.
-#'   \item \code{F} An array of instantaneous fishing mortality rates. \item
-#'   \code{b} A vector of selectivity values. \item \code{h} A scalar
-#'   instantaneous tag loss rate. \item \code{c} A scalar mean initial tag loss
-#'   rate.} The following can be included in the \code{structure} list, or omitted
-#'   to be assigned default values \itemize{ \item \code{liberty} A vector of
-#'   length two specifying the minimum and maximum time at liberty. \item
-#'   \code{family} An integer specifying the error family 0: Poisson; 1: NB1; 2:
-#'   NB2. \item \code{timestep} An integer specifying the results time step as a
-#'   multiple of the data time step. \item \code{nlminb_loops} An integer
-#'   specifying the number of \code{nlminb} loops. \item \code{newton_steps} An
-#'   integer specifying the number of Newton steps. \item \code{openmp_cores} An
-#'   integer specifying the number of \code{OpenMP} parallel cores.}
+#'   \item \code{T} An array holding tagged release counts. See \code{arrayT()}.
+#'   \item \code{R} An array holding recovered counts. See \code{arrayR()}.
+#'   \item \code{I} A square binary matrix indicating which direct movement
+#'   rates to estimate.} The following can be optionally included in the
+#'   \code{data} list and are otherwise excluded from the model \itemize{ \item
+#'   \code{lambda} An array of tag reporting rates. } The following can be
+#'   optionally included in the \code{data} list to be treated as data, or
+#'   omitted to be treated as parameters with default initial values, or
+#'   included in the \code{parameters} list along with initial values \itemize{
+#'   \item \code{M} An array of instantaneous natural mortality rates. \item
+#'   \code{F} An array of instantaneous fishing mortality rates. \item \code{b}
+#'   A vector of selectivity values. \item \code{h} A scalar instantaneous tag
+#'   loss rate. \item \code{c} A scalar mean initial tag loss rate.} The
+#'   following can be included in the \code{settings} list, or omitted to be
+#'   assigned default values \itemize{ \item \code{family} An integer specifying
+#'   the error family 0: Poisson; 1: NB1; 2: NB2. \item \code{timestep} An
+#'   integer specifying the results time step as a multiple of the data time
+#'   step. \item \code{nlminb_loops} An integer specifying the number of
+#'   \code{nlminb} loops. \item \code{newton_steps} An integer specifying the
+#'   number of Newton steps. \item \code{openmp_cores} An integer specifying the
+#'   number of \code{OpenMP} parallel cores.}
 #'
 #' @return A list of class \code{mmmFit} and \code{mmmTMB}.
 #' @export
@@ -49,7 +48,7 @@ NULL
 #'
 mmmFit <- function(data,
                    parameters,
-                   structure,
+                   settings = NULL,
                    map = NULL,
                    random = NULL,
                    control = mmmTMBcontrol()) {
@@ -58,12 +57,73 @@ mmmFit <- function(data,
 
   tictoc::tic("mmmFit")
 
-  #---------------- Check main arguments --------------------------------------#
+  #---------------- Check data argument ---------------------------------------#
 
-  cat("checking main arguments \n")
+  cat("checking arguments \n")
+  stopifnot(!missing(data), is.list(data))
+  stopifnot(all(is.element(c("T", "R", "I"), names(data))))
   # TODO
 
+  #---------------- Check parameters argument ---------------------------------#
+  # TODO
 
+  #---------------- Check settings argument -----------------------------------#
+
+  # Error family
+  if (is.null(settings$family)) {
+    family <- 1L
+  } else {
+    stopifnot(
+      is.numeric(settings$family),
+      length(settings$family) == 1,
+      is.element(settings$family, c(0L, 1L, 2L)))
+    family <- settings$family
+  }
+  # Results timestep
+  if (is.null(settings$timestep)) {
+    timestep <- 1L
+  } else {
+    stopifnot(
+      is.numeric(settings$timestep),
+      length(settings$timestep) == 1,
+      settings$timestep > 0,
+      settings$timestep == as.integer(settings$timestep))
+    timestep <- settings$timestep
+  }
+  # Number nlminb_loops
+  if (is.null(settings$nlminb_loops)) {
+    nlminb_loops <- 5L
+  } else {
+    stopifnot(
+      is.numeric(settings$nlminb_loops),
+      length(settings$nlminb_loops) == 1,
+      settings$nlminb_loops >= 0,
+      settings$nlminb_loops == as.integer(settings$nlminb_loops))
+    nlminb_loops <- settings$nlminb_loops
+  }
+  # Number newton_steps
+  if (is.null(settings$newton_steps)) {
+    newton_steps <- 5L
+  } else {
+    stopifnot(
+      is.numeric(settings$newton_steps),
+      length(settings$newton_steps) == 1,
+      settings$newton_steps >= 0,
+      settings$newton_steps == as.integer(settings$newton_steps))
+    newton_steps <- settings$newton_steps
+  }
+  # Number openmp_cores
+  if (is.null(settings$openmp_cores)) {
+    openmp_cores <- as.integer(parallel::detectCores() / 2)
+  } else {
+    stopifnot(
+      is.numeric(settings$openmp_cores),
+      length(settings$openmp_cores) == 1,
+      settings$openmp_cores > 0,
+      settings$openmp_cores <= parallel::detectCores(),
+      settings$openmp_cores == as.integer(settings$openmp_cores))
+    openmp_cores <- settings$openmp_cores
+  }
 
   #---------------- Unpack arguments ------------------------------------------#
 
@@ -71,7 +131,6 @@ mmmFit <- function(data,
   # TODO
 
 
-  # openmp_cores <- structure$openmp_cores
   # diag(I) <- 0L
 
   #---------------- Check constituent arguments -------------------------------#
@@ -83,8 +142,12 @@ mmmFit <- function(data,
   #---------------- Create the tmb_data ---------------------------------------#
 
   cat("creating tmb_data \n")
-  # TODO
-
+  tmb_data <- list(
+    T = data$T,
+    R = data$R,
+    I = data$I,
+    family = family
+  )
 
   #---------------- Create the tmb_parameters ---------------------------------#
 
@@ -207,7 +270,7 @@ mmmFit <- function(data,
   structure(list(
     data        = data_list,
     parameters  = parameters_list,
-    structure   = structure,
+    settings    = settings,
     random      = random,
     map         = map_list,
     control     = control,
