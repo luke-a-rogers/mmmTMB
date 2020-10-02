@@ -1,6 +1,5 @@
 #include <TMB.hpp>
 
-
 // ---------------- Enumerate valid constants ----------------------------------
 
 enum valid_family {
