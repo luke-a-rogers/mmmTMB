@@ -21,7 +21,9 @@ Imports:
     tictoc,
     MASS,
     ggplot2,
-    parallel
+    parallel,
+    checkmate,
+    dplyr
 LinkingTo: 
     Rcpp,
     RcppEigen,
