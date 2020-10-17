@@ -4,7 +4,14 @@
 \alias{mmmTags}
 \title{Prepare Tag Data}
 \usage{
-mmmTags(x, y, cols = NULL, time_step = NULL, date_lims = NULL)
+mmmTags(
+  x,
+  y,
+  cols = NULL,
+  time_step = NULL,
+  date_lims = NULL,
+  days_liberty = NULL
+)
 }
 \arguments{
 \item{x}{A data frame of named columns. See details.}
@@ -25,5 +32,31 @@ mmmTags(x, y, cols = NULL, time_step = NULL, date_lims = NULL)
 Prepare Tag Data
 }
 \examples{
+
+x <- data.frame(
+  Release_Date = c("2010-06-01", "2015-04-01", "2020-06-01"),
+  Release_Area = c(1,1,1),
+  Release_Group = c(1,1,1),
+  ID = c("TAG001", "TAG002", "TAG003"))
+y <- data.frame(
+  Release_Date = c("2010-06-01", "2020-06-01"),
+  Release_Area = c(1,1),
+  Recover_Date = c("2013-08-01", "2020-08-01"),
+  Recover_Area = c(1,1),
+  Release_Group = c(1,1),
+  ID = c("TAG001", "TAG003"))
+cols = list(
+  release_date = "Release_Date",
+  release_area = "Release_Area",
+  recover_date = "Recover_Date",
+  recover_area = "Recover_Area",
+  group = "Release_Group",
+  id = "ID")
+time_step <- "year"
+date_lims <- c("2010-01-01", "2020-12-31")
+days_liberty <- c(0, Inf)
+
+
+
 
 }

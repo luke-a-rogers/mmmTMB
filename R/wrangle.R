@@ -15,11 +15,37 @@
 #'
 #' @examples
 #'
+#' x <- data.frame(
+#'   Release_Date = c("2010-06-01", "2015-04-01", "2020-06-01"),
+#'   Release_Area = c(1,1,1),
+#'   Release_Group = c(1,1,1),
+#'   ID = c("TAG001", "TAG002", "TAG003"))
+#' y <- data.frame(
+#'   Release_Date = c("2010-06-01", "2020-06-01"),
+#'   Release_Area = c(1,1),
+#'   Recover_Date = c("2013-08-01", "2020-08-01"),
+#'   Recover_Area = c(1,1),
+#'   Release_Group = c(1,1),
+#'   ID = c("TAG001", "TAG003"))
+#' cols = list(
+#'   release_date = "Release_Date",
+#'   release_area = "Release_Area",
+#'   recover_date = "Recover_Date",
+#'   recover_area = "Recover_Area",
+#'   group = "Release_Group",
+#'   id = "ID")
+#' time_step <- "year"
+#' date_lims <- c("2010-01-01", "2020-12-31")
+#'
+#'
+#'
+#'
 mmmTags <- function (x,
                      y,
                      cols = NULL,
                      time_step = NULL,
-                     date_lims = NULL) {
+                     date_lims = NULL,
+                     days_liberty = c(0L, Inf)) {
 
   #--------------- Check arguments --------------------------------------------#
 
@@ -28,6 +54,7 @@ mmmTags <- function (x,
   checkmate::assert_list(cols, unique = TRUE)
   checkmate::assert_character(time_step, len = 1)
   checkmate::assert_character(date_lims, len = 2, null.ok = TRUE)
+  checkmate::assert_numeric(days_liberty, lower = 0, len = 2)
 
   #--------------- Check required columns -------------------------------------#
 
@@ -76,13 +103,43 @@ mmmTags <- function (x,
   x <- x[, colnames_x]
   y <- y[, colnames_y]
 
-  #--------------- Check event data -------------------------------------------#
+  #--------------- Convert columns to dates -----------------------------------#
+
+  x <- dplyr::mutate(x, release_date = lubridate::as_date(release_date))
+  y <- dplyr::mutate(y,
+    release_date = lubridate::as_date(release_date),
+    recover_date = lubridate::as_date(recover_date)
+  )
+
+  #--------------- Convert date limits to dates -------------------------------#
+
+  if (is.null(date_lims)) {
+    date_lims <- c(min(x$release_date), max(c(x$release_date, y$recover_date)))
+  } else {
+    date_lims <- lubridate::as_date(date_lims)
+  }
+
+  #--------------- Filter events by dates -------------------------------------#
+
+  # Release
+  x <- x %>% dplyr::filter(
+    release_date >= date_lims[1],
+    release_date <= date_lims[2]
+  )
+  # Recover
+  y <- y %>% dplyr::filter(
+    release_date >= date_lims[1],
+    release_date <= date_lims[2],
+    recover_date >= date_lims[1],
+    recover_date <= date_lims[2],
+    release_date < recover_date
+  )
 
   # TODO: Check all
-  # - y recover_date after release_date
-  # - y id / release_date / release_area in x
   # - all x id unique
-
+  # - y id / release_date / release_area in x (use inner_join)
+  # - Decide: exclude releases from x when recoveries excluded by days_liberty?
+  # (I think yes - other exclusions (e.g. data errors roll into reporting rate))
 
 
   #--------------- Convert date to time step ----------------------------------#
