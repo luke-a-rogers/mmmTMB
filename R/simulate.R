@@ -1,5 +1,5 @@
 
 
-mmmSimulate <- function() {
+mmmSim <- function() {
 
 }
