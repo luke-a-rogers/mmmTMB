@@ -2,11 +2,12 @@
 
 S3method(barplot,mmmTMB)
 S3method(plot,mmmTMB)
-export(arrayT)
 export(lineplot)
 export(mmmFit)
 export(mmmTMB)
 export(mmmTMBcontrol)
+export(mmmTags)
 export(sensibly_round)
 importFrom(Rcpp,sourceCpp)
+importFrom(magrittr,`%>%`)
 useDynLib(mmmTMB, .registration = TRUE)
