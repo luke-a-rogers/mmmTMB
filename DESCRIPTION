@@ -23,7 +23,8 @@ Imports:
     ggplot2,
     parallel,
     checkmate,
-    dplyr
+    dplyr,
+    lubridate
 LinkingTo: 
     Rcpp,
     RcppEigen,
