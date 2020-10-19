@@ -7,6 +7,8 @@
 #'   \code{day}.
 #' @param date_lims A character vector with two elements. "%Y-%M-%D".
 #'
+#' @details TBD
+#'
 #' @importFrom magrittr `%>%`
 #'
 #' @return
@@ -132,15 +134,28 @@ mmmTags <- function (x,
     release_date <= date_lims[2],
     recover_date >= date_lims[1],
     recover_date <= date_lims[2],
-    release_date < recover_date
+    release_date <= recover_date
   )
 
-  # TODO: Check all
-  # - all x id unique
-  # - y id / release_date / release_area in x (use inner_join)
-  # - Decide: exclude releases from x when recoveries excluded by days_liberty?
-  # (I think yes - other exclusions (e.g. data errors roll into reporting rate))
+  #--------------- Remove duplicates from x and y -----------------------------#
 
+  # The tag reporting rate accounts for data losses due to errors
+  x_rows <- nrow(x)
+  y_rows <- nrow(y)
+  x <- dplyr::distinct(x, id, release_date, release_area, .keep_all = TRUE)
+  y <- dplyr::distinct(y, id, release_date, release_area, .keep_all = TRUE)
+  cat(paste0("duplicate release tags removed: ", x_rows - nrow(x)))
+  cat(paste0("duplicate recover tags removed: ", y_rows - nrow(y)))
+
+  #--------------- Filter y by x ----------------------------------------------#
+
+  y <- dplyr::inner_join(x, y, by = colnames_x)[, colnames_y]
+
+  #--------------- Filter y by days at liberty --------------------------------#
+
+  # Time steps at liberty must also be tracked in the movement model
+  y <- dplyr::filter(y, recover_date - release_date >= days_liberty[1]) %>%
+    dplyr::filter(recover_date - release_date <= days_liberty[2])
 
   #--------------- Convert date to time step ----------------------------------#
 
@@ -168,6 +183,8 @@ mmmTags <- function (x,
 
   #--------------- Return a list ----------------------------------------------#
 
+  # Include appropriate units at liberty
+  # Ideally, return as a list of class "mmmTags"
   return(list(
     structure(mT = mT, class = "mT"),
     structure(mR = mR, class = "mR"))
