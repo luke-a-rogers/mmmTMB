@@ -8,9 +8,10 @@ mmmTags(
   x,
   y,
   cols = NULL,
+  groups = NULL,
   time_step = NULL,
   date_lims = NULL,
-  days_liberty = NULL
+  days_liberty = c(0L, Inf)
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ mmmTags(
 \item{y}{A data frame of named columns. See details.}
 
 \item{cols}{A list of named character elements. See details.}
+
+\item{groups}{A list of named elements. See details.}
 
 \item{time_step}{A character string. One of \code{year}, \code{month}, or
 \code{day}.}
@@ -30,6 +33,9 @@ mmmTags(
 }
 \description{
 Prepare Tag Data
+}
+\details{
+TBD
 }
 \examples{
 
@@ -54,7 +60,6 @@ cols = list(
   id = "ID")
 time_step <- "year"
 date_lims <- c("2010-01-01", "2020-12-31")
-days_liberty <- c(0, Inf)
 
 
 

@@ -3,6 +3,7 @@
 #' @param x A data frame of named columns. See details.
 #' @param y A data frame of named columns. See details.
 #' @param cols A list of named character elements. See details.
+#' @param groups A list of named elements. See details.
 #' @param time_step A character string. One of \code{year}, \code{month}, or
 #'   \code{day}.
 #' @param date_lims A character vector with two elements. "%Y-%M-%D".
@@ -45,6 +46,7 @@
 mmmTags <- function (x,
                      y,
                      cols = NULL,
+                     groups = NULL,
                      time_step = NULL,
                      date_lims = NULL,
                      days_liberty = c(0L, Inf)) {
@@ -54,8 +56,8 @@ mmmTags <- function (x,
   checkmate::assert_data_frame(x)
   checkmate::assert_data_frame(y)
   checkmate::assert_list(cols, unique = TRUE)
-  checkmate::assert_character(time_step, len = 1)
-  checkmate::assert_character(date_lims, len = 2, null.ok = TRUE)
+  checkmate::assert_list(group, unique = TRUE, null.ok = TRUE)
+  checkmate::assert_character(time_step, len = 1, null.ok = TRUE)
   checkmate::assert_numeric(days_liberty, lower = 0, len = 2)
 
   #--------------- Check required columns -------------------------------------#
@@ -104,6 +106,10 @@ mmmTags <- function (x,
   # Define
   x <- x[, colnames_x]
   y <- y[, colnames_y]
+
+  #--------------- Filter NA values from x and y ------------------------------#
+
+  # TODO: Filter NA values
 
   #--------------- Convert columns to dates -----------------------------------#
 
@@ -154,13 +160,43 @@ mmmTags <- function (x,
   #--------------- Filter y by days at liberty --------------------------------#
 
   # Time steps at liberty must also be tracked in the movement model
-  y <- dplyr::filter(y, recover_date - release_date >= days_liberty[1]) %>%
-    dplyr::filter(recover_date - release_date <= days_liberty[2])
+  y <- y %>% dplyr::filter(
+    recover_date - release_date >= days_liberty[1],
+    recover_date - release_date <= days_liberty[2]
+  )
 
   #--------------- Convert date to time step ----------------------------------#
 
-  # TODO: day, month, or year
-
+  if (is.null(time_step) || time_step == "year") {
+    x <- x %>% dplyr::mutate(
+      release_step = as.integer(
+        lubridate::year(release_date) - lubridate::year(date_lims[1])))
+    y <- y %>% dplyr::mutate(
+      release_step = as.integer(
+        lubridate::year(release_date) - lubridate::year(date_lims[1])),
+      recover_step = as.integer(
+        lubridate::year(recover_date) - lubridate::year(date_lims[1])))
+  } else if (time_step == "month") {
+    x <- x %>% dplyr::mutate(
+      release_step = as.integer(
+        12 * (lubridate::year(release_date) - lubridate::year(date_lims[1])) +
+          lubridate::month(release_date) - lubridate::month(date_lims[1])))
+    y <- y %>% dplyr::mutate(
+      release_step = as.integer(
+        12 * (lubridate::year(release_date) - lubridate::year(date_lims[1])) +
+          lubridate::month(release_date) - lubridate::month(date_lims[1])),
+      recover_step = as.integer(
+        12 * (lubridate::year(recover_date) - lubridate::year(date_lims[1])) +
+          lubridate::month(recover_date) - lubridate::month(date_lims[1])))
+  } else if (time_step == "day") {
+    x <- x %>% dplyr::mutate(
+      release_step = as.integer(release_date - date_lims[1]))
+    y <- y %>% dplyr::mutate(
+      release_step = as.integer(release_date - date_lims[1]),
+      recover_step = as.integer(recover_date - date_lims[1]))
+  } else {
+    stop("time_step must be one of 'year', 'month', or 'day'.")
+  }
 
   #--------------- Convert group to integer -----------------------------------#
 
