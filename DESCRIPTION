@@ -24,7 +24,8 @@ Imports:
     parallel,
     checkmate,
     dplyr,
-    lubridate
+    lubridate,
+    tidyr
 LinkingTo: 
     Rcpp,
     RcppEigen,
