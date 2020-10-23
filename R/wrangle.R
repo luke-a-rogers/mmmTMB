@@ -53,6 +53,8 @@ mmmTags <- function (x,
                      date_lims = NULL,
                      days_liberty = c(0L, Inf)) {
 
+  # TODO: Check that group is identical between release and recover
+
   #--------------- Check arguments --------------------------------------------#
 
   checkmate::assert_data_frame(x)

@@ -4,7 +4,6 @@
 ## usethis namespace: end
 NULL
 
-
 #' Fit a Markovian Movement Model
 #'
 #' @description Estimate movement rates
@@ -47,7 +46,7 @@ NULL
 #' @examples
 #'
 mmmFit <- function(data,
-                   parameters,
+                   parameters = NULL,
                    settings = NULL,
                    map = NULL,
                    random = NULL,
@@ -60,8 +59,6 @@ mmmFit <- function(data,
   #---------------- Check data argument ---------------------------------------#
 
   cat("checking arguments \n")
-  stopifnot(!missing(data), is.list(data))
-  stopifnot(all(is.element(c("T", "R", "I"), names(data))))
   # TODO
 
   #---------------- Check parameters argument ---------------------------------#
@@ -128,44 +125,186 @@ mmmFit <- function(data,
   #---------------- Unpack arguments ------------------------------------------#
 
   cat("unpacking arguments \n")
+  # Arguments tags, mT, mR, liberty
+  if (is.element("tags", names(data))) {
+    # Check
+    checkmate::assert_list(data$tags)
+    checkmate::assert_true(all(is.element(c("mT", "mR"), names(data$tags))))
+    checkmate::assert_matrix(data$tags$mT, mode = "integer", ncols = 4)
+    checkmate::assert_matrix(data$tags$mR, mode = "integer", ncols = 6)
+    checkmate::assert_class(data$tags, "mmmTags")
+    # Assign
+    cat("using mT and mR from tags data \n")
+    mT <- data$tags$mT
+    mR <- data$tags$mR
+    cat("using time at liberty from tags data \n")
+    liberty <- data$tags$steps_liberty
+  } else {
+    # Check
+    checkmate::assert_matrix(data$mT, mode = "integerish", ncols = 4)
+    checkmate::assert_matrix(data$mR, mode = "integerish", ncols = 6)
+    checkmate::assert_numeric(settings$liberty, len = 2, null.ok = TRUE)
+    # Assign
+    mT <- data$mT
+    mR <- data$mR
+    if (is.null(settings$liberty)) {
+      cat("using default time at liberty \n")
+      liberty <- c(0, Inf)
+    } else {
+      liberty <- numeric(2)
+      cat("using time at liberty from settings \n")
+      liberty[1] <- max(0, settings$liberty[1], na.rm = TRUE)
+      liberty[2] <- max(liberty[1], settings$liberty[2], na.rm = TRUE)
+    }
+  }
+  cat(paste0("liberty = c(", liberty[1], ",", liberty[2], ") \n"))
+  # Argument mI
+  checkmate::assert_matrix(data$mI, mode = "integerish")
+  mI <- data$mI
+  # Argument mL: tag reporting rates
+  if (!is.null(data$mL)) {
+    mL <- data$mL
+  } else {
+    mL <- array(1L, dim = c(nt, na))
+  }
+
+
+
+
+
+  # DONE: mT, mR, and liberty, mI, mL
+
   # TODO
 
 
   # diag(I) <- 0L
 
-  #---------------- Check constituent arguments -------------------------------#
+  #---------------- Check dimensions ------------------------------------------#
 
-  cat("checking constituent arguments \n")
-  # TODO
+  cat("checking argument dimensions \n")
+  # TODO:
+
+
+  #---------------- Create index vectors --------------------------------------#
+
+  cat("creating index vectors \n")
+  # TODO: Use settings input for these
+
+  # Index limits
+  np <- sum(mI)
+  nt <- max(c(mT$release_step, mR$recover_step)) + 1L # Index starts at zero
+  na <- max(c(mT$release_area, mR$recover_area)) + 1L # Index starts at zero
+  ng <- max(c(mT$group, mR$group)) + 1L # Index starts at zero
+  # Secondary index limits
+  npt <-  # Count of parameter time steps
+  nft <-  # Count of fishing rate time steps
+  nfa <-  # Count of fishing rate areas
+  # Index vectors
+
 
 
   #---------------- Create the tmb_data ---------------------------------------#
 
   cat("creating tmb_data \n")
   tmb_data <- list(
-    T = data$T,
-    R = data$R,
-    I = data$I,
-    family = family
+    mT = mT,
+    mR = mR,
+    mI = mI,
+    mL = mL,
+    family = family,
+    # Index vectors
+    np = np, # Index limits: number of parameters
+    nt = nt, # Index limits: number of time steps
+    na = na, # Index limits: number of areas
+    ng = ng, # Index limits: number of groups
+    npt = , # Secondary index limits: number of parameter time steps
+    nft = , # Secondary index limits: number of fishing rate time steps
+    nfa = , # Secondary index limits: number of fishing rate areas
+    vpt = , #
+    vft = , #
+    vfa = , #
   )
+
+  #---------------- Create parameter values -----------------------------------#
+
+  # Array movement parameters
+  if (!is.null(parameters$aP)) {
+    aP <- parameters$aP
+  } else {
+    aP <- array(0, dim = c(npt, np, ng))
+  }
+  # Matrix log fishing mortality rate
+  if (!is.null(data$mF)) {
+    mlF <- log(data$mF)
+  } else {
+    mlF <- array(-3, dim = c(nft, nfa)) # nfg
+  }
+  # Vector log fishing selectivity and tag reporting bias
+  if (!is.null(data$mB)) {
+    mlB <- log(data$mB)
+  } else {
+    mlB <- array(0, dim = c(nba, nbg))
+  }
+  # Scalar log tag loss rate
+  if (!is.null(data$sH)) {
+    slH <- log(data$sH)
+  } else {
+    slH <- -3L
+  }
+  # Scalar log initial tag loss rate
+  if (!is.null(data$sC)) {
+    slC <- log(data$sC)
+  } else {
+    slC <- -2L
+  }
+  # Scalar log natural mortality
+  if (!is.null(data$sM)) {
+    slM <- log(data$sM)
+  } else {
+    slM <- -2L
+  }
+  # Scalar log negative binomial dispersal
+  slD <- 0L
 
   #---------------- Create the tmb_parameters ---------------------------------#
 
   cat("creating tmb_parameters \n")
-  # TODO
-
+  tmb_parameters <- list(
+    aP = aP, # Array: movement parameters
+    mlF = mlF, # Matrix: log fishing mortality rates
+    mlB = mlB, # Matrix: log fishery selectivity and tag reporting bias
+    slH = slH, # Scalar: log tag loss rate
+    slC = slC, # Scalar: log initial tag loss rate
+    slM = slM, # Scalar: natural mortality
+    slD = slD # Scalar: negative binomial dispersion
+  )
 
   #---------------- Create the tmb_map ----------------------------------------#
 
   cat("creating tmb_map \n")
-  # TODO
-
+  tmb_map <- list()
+  # Default
+  if (!is.null(data$mF)) { tmb_map <- c(tmb_map, mlF = NA) }
+  if (!is.null(data$mB)) { tmb_map <- c(tmb_map, mlB = NA) }
+  if (!is.null(data$sH)) { tmb_map <- c(tmb_map, slH = NA) }
+  if (!is.null(data$sC)) { tmb_map <- c(tmb_map, slC = NA) }
+  if (!is.null(data$sM)) { tmb_map <- c(tmb_map, slM = NA) }
+  if (family == 0) { tmb_map <- c(tmb_map, slD = NA)}
+  # User defined
+  if (!is.null(map$mF)) { tmb_map$mlF <- map$mF }
+  if (!is.null(map$mB)) { tmb_map$mlB <- map$mB }
+  if (!is.null(map$sH)) { tmb_map$slH <- map$sH }
+  if (!is.null(map$sC)) { tmb_map$slC <- map$sC }
+  if (!is.null(map$sM)) { tmb_map$slM <- map$sM }
 
   #---------------- Create the tmb_random -------------------------------------#
 
   cat("creating tmb_random \n")
-  # TODO
-
+  if (is.null(random)) {
+    tmb_random <- character()
+  } else {
+    tmb_random <- random
+  }
 
   #---------------- Define the number of cores --------------------------------#
 
@@ -252,7 +391,7 @@ mmmFit <- function(data,
   tictoc::tic("results")
   cat("computing results")
   # TODO
-
+  # Use result_steps here
 
 
 
