@@ -6,11 +6,11 @@
 \usage{
 mmmFit(
   data,
-  parameters,
-  settings = NULL,
+  parameters = NULL,
   map = NULL,
   random = NULL,
-  control = mmmTMBcontrol()
+  settings = mmmSet(),
+  control = mmmControl()
 )
 }
 \arguments{
@@ -18,13 +18,13 @@ mmmFit(
 
 \item{parameters}{A list of initial parameter values. See details.}
 
-\item{settings}{A list of values that define the model. See details.}
-
 \item{map}{A list of values to override defaults.}
 
 \item{random}{A character vector of parameters to treat as random effects.}
 
-\item{nlminb_control}{A list. See \code{mmmTMBcontrol()}.}
+\item{settings}{A list of values that define the model. See details.}
+
+\item{nlminb_control}{A list. See \code{mmmControl()}.}
 }
 \value{
 A list of class \code{mmmFit} and \code{mmmTMB}.

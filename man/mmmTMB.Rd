@@ -66,7 +66,7 @@ values. See Details.}
 \item{optimizer_list}{\code{\link[=list]{list()}} Input optimizer and \code{OpenMP} values. See
 Details.}
 
-\item{nlminb_control}{\code{\link[=list]{list()}} See \code{\link[=mmmTMBcontrol]{mmmTMBcontrol()}}}
+\item{nlminb_control}{\code{\link[=list]{list()}} See \code{\link[=mmmControl]{mmmControl()}}}
 }
 \value{
 An \code{\link[=list]{list()}} of class \code{mmmTMB} with elements:
