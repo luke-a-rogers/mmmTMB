@@ -13,7 +13,7 @@ NULL
 #' @param settings A list of values that define the model. See details.
 #' @param random A character vector of parameters to treat as random effects.
 #' @param map A list of values to override defaults.
-#' @param nlminb_control A list. See \code{mmmTMBcontrol()}.
+#' @param nlminb_control A list. See \code{mmmControl()}.
 #'
 #' @details The following must be included in the \code{data} list: \itemize{
 #'   \item \code{T} An array holding tagged release counts. See \code{arrayT()}.
@@ -47,10 +47,10 @@ NULL
 #'
 mmmFit <- function(data,
                    parameters = NULL,
-                   settings = NULL,
                    map = NULL,
                    random = NULL,
-                   control = mmmTMBcontrol()) {
+                   settings = mmmSet(),
+                   control = mmmControl()) {
 
   #---------------- Start the clock -------------------------------------------#
 
@@ -196,7 +196,26 @@ mmmFit <- function(data,
   na <- max(c(mT$release_area, mR$recover_area)) + 1L # Index starts at zero
   ng <- max(c(mT$group, mR$group)) + 1L # Index starts at zero
   # Secondary index limits
-  npt <-  # Count of parameter time steps
+  if (settings$time_varying) {
+    if (!settings$block_length && !settings$cycle_length) {
+      npt <- nt
+      vpt <- c(seq_len(npt) - 1L) # Index from zero for C++
+    } else if (settings$block_length && !settings$cycle_length) {
+      npt <- ceiling(nt / settings$block_length)
+      vpt <- rep(seq_len(npt) - 1L, each = settings$block_length)[seq_len(nt)]
+    } else if (settings$cycle_length && !settings$block_length) {
+      npt <- settings$cycle_length
+      vpt <- rep(seq_len(npt) - 1L, ceiling(nt / npt))[seq_len(nt)]
+    } else {
+      npt <- settings$cycle_length
+      vpt_cycle <- rep(seq_len(npt) - 1L, ceiling(nt / npt))[seq_len(nt)]
+      vpt <- rep(vpt_cycle, each = settings$block_length)[seq_len(nt)]
+    }
+  } else {
+    npt <- 1L
+    vpt <- rep(0L, nt) # Index from zero for C++
+  }
+
   nft <-  # Count of fishing rate time steps
   nfa <-  # Count of fishing rate areas
   # Index vectors
@@ -309,7 +328,7 @@ mmmFit <- function(data,
   #---------------- Define the number of cores --------------------------------#
 
   cat("setting openmp_cores")
-  if (!is.null(openmp_cores)) {TMB::openmp(n = openmp_cores)}
+  if (!is.null(settings$openmp_cores)) {TMB::openmp(n = settings$openmp_cores)}
 
   #---------------- Create the ADFun object -----------------------------------#
 
@@ -479,7 +498,7 @@ mmmFit <- function(data,
 #' values. See Details.
 #' @param optimizer_list [list()] Input optimizer and \code{OpenMP} values. See
 #' Details.
-#' @param nlminb_control [list()] See [mmmTMBcontrol()]
+#' @param nlminb_control [list()] See [mmmControl()]
 #'
 #' @details
 #' Describe \code{template_2d}...
@@ -542,7 +561,7 @@ mmmTMB <- function (released_3d, # Data
                     structure_list = NULL, # Optional lists
                     parameter_list = NULL,
                     optimizer_list = NULL,
-                    nlminb_control = mmmTMBcontrol()) {
+                    nlminb_control = mmmControl()) {
 
 
   #---------------- Start the clock -------------------------------------------#
@@ -819,6 +838,56 @@ mmmTMB <- function (released_3d, # Data
 }
 
 
+#' Settings for \code{mmmFit()}
+#'
+#' @param error_family Character. One of \code{"nb1"} or \code{"poisson"}
+#' @param time_varying Logical. Should movement rates vary through time?
+#' @param time_process Character. One of \code{"none"} or \code{"rw"}
+#' @param cycle_length Integer. Cycle length or \code{0} for no cycle.
+#' @param block_length Integer. Block length for movement rate.
+#' @param fish_rate_by Character. Estimate F as a single value (\code{"none"}),
+#'   by time steps as blocks (\code{"block"}), by areas (\code{"areas"}), or by
+#'   both blocks and areas (\code{"both"}).
+#' @param results_step Integer. Results time step as a multiple of the data
+#'   time step.
+#' @param nlminb_loops Integer. Number of times to run [stats::nlminb()]
+#'   optimization.
+#' @param newton_steps Integer. Number of Newton optimization steps.
+#' @param openmp_cores Integer. Number of parallel cores for TMB.
+#'
+#' @return A list of settings for \code{mmmFit()}
+#' @export
+#'
+#' @examples
+#'
+mmmSet <- function (error_family = c("nb1", "poisson"),
+                    time_varying = 0,
+                    time_process = c("none", "rw"),
+                    cycle_length = 0,
+                    block_length = 1,
+                    fish_rate_by = c("none", "block", "area", "both"),
+                    results_step = 1,
+                    nlminb_loops = 5,
+                    newton_steps = 5,
+                    openmp_cores = NULL) {
+
+  #--------------- Return a list of settings ----------------------------------#
+
+  structure(list(
+    error_family = error_family[1],
+    time_varying = time_varying,
+    time_process = time_process[1],
+    cycle_length = cycle_length,
+    block_length = block_length,
+    fish_rate_by = fish_rate_by[1],
+    results_step = results_step,
+    nlminb_loops = nlminb_loops,
+    newton_steps = newton_steps,
+    openmp_cores = openmp_cores),
+    class = "mmmSet")
+}
+
+
 #' Optimization control options
 #'
 #' Any arguments to pass to \code{stats::nlminb()}.
@@ -831,6 +900,6 @@ mmmTMB <- function (released_3d, # Data
 #'
 #' @export
 #'
-mmmTMBcontrol <- function(eval.max = 1e4, iter.max = 1e4, ...) {
+mmmControl <- function (eval.max = 1e4, iter.max = 1e4, ...) {
   list(eval.max = eval.max, iter.max = iter.max, ...)
 }
