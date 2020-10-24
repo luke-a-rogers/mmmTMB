@@ -8,37 +8,38 @@ NULL
 #'
 #' @description Estimate movement rates
 #'
-#' @param data A list of named data objects. See details.
-#' @param parameters A list of initial parameter values. See details.
-#' @param settings A list of values that define the model. See details.
-#' @param random A character vector of parameters to treat as random effects.
-#' @param map A list of values to override defaults.
-#' @param nlminb_control A list. See \code{mmmControl()}.
+#' @param data A list of named data objects. See Details.
+#' @param parameters A list of initial parameter values. See Details.
+#' @param random A character vector of parameters to estimate as random effects.
+#' @param map A list of \code{map} values to override defaults.
+#'   See \code{TMB::MakeADFun()}.
+#' @param settings A list of values that define the model.
+#'   See \code{mmmSet()}.
+#' @param control A list of optimization control options to pass to
+#'   \code{stats::nlminb()}. See \code{mmmControl()}.
 #'
-#' @details The following must be included in the \code{data} list: \itemize{
-#'   \item \code{T} An array holding tagged release counts. See \code{arrayT()}.
-#'   \item \code{R} An array holding recovered counts. See \code{arrayR()}.
-#'   \item \code{I} A square binary matrix indicating which direct movement
-#'   rates to estimate.} The following can be optionally included in the
-#'   \code{data} list and are otherwise excluded from the model \itemize{ \item
-#'   \code{lambda} An array of tag reporting rates. } The following can be
-#'   optionally included in the \code{data} list to be treated as data, or
-#'   omitted to be treated as parameters with default initial values, or
-#'   included in the \code{parameters} list along with initial values \itemize{
-#'   \item \code{M} An array of instantaneous natural mortality rates. \item
-#'   \code{F} An array of instantaneous fishing mortality rates. \item \code{b}
-#'   A vector of selectivity values. \item \code{h} A scalar instantaneous tag
-#'   loss rate. \item \code{c} A scalar mean initial tag loss rate.} The
-#'   following can be included in the \code{settings} list, or omitted to be
-#'   assigned default values \itemize{ \item \code{family} An integer specifying
-#'   the error family 0: Poisson; 1: NB1; 2: NB2. \item \code{timestep} An
-#'   integer specifying the results time step as a multiple of the data time
-#'   step. \item \code{nlminb_loops} An integer specifying the number of
-#'   \code{nlminb} loops. \item \code{newton_steps} An integer specifying the
-#'   number of Newton steps. \item \code{openmp_cores} An integer specifying the
-#'   number of \code{OpenMP} parallel cores.}
+#' @details The list argument \code{data} must contain
+#' \itemize{
+#'   \item{\code{tags} a list of class \code{mmmTags} (recommended: see
+#'     \code{mmmTags()}) OR both \code{mT} and \code{mR} integer matrices
+#'     of tag release and recovery counts, respectively, formatted as
+#'     described in \code{mmmTags()}}
+#'   \item{\code{mI} a square binary index matrix representing movement
+#'     between areas (from rows to columns). Ones represent movement that
+#'     is allowed from one time step to the next. Zeros off the diagonal
+#'     represent disallowed movement. Numbers on the diagonal are ignored
+#'     because self-movement is always allowed.}
+#' }
+#' The list argument \code{data} may optionally contain
+#' \itemize{
+#'   \item{\code{mL} a matrix of tag reporting rates (proportions)
+#'     in which the time step is given by the row and the area is
+#'     given by the column. Defaults to ones (full reporting).}
+#'   \item{mW}
+#' }
 #'
-#' @return A list of class \code{mmmFit} and \code{mmmTMB}.
+#'
+#' @return A list of class \code{mmmFit}.
 #' @export
 #'
 #' @author Luke A. Rogers
@@ -47,8 +48,8 @@ NULL
 #'
 mmmFit <- function(data,
                    parameters = NULL,
-                   map = NULL,
                    random = NULL,
+                   map = NULL,
                    settings = mmmSet(),
                    control = mmmControl()) {
 
@@ -58,148 +59,137 @@ mmmFit <- function(data,
 
   #---------------- Check data argument ---------------------------------------#
 
-  cat("checking arguments \n")
-  # TODO
+  cat("checking data arguments \n")
+  checkmate::assert_list(data, null.ok = FALSE)
+  checkmate::assert_class(data$tags, "mmmTags", null.ok = TRUE)
+  checkmate::assert_matrix(data$mT, mode = "integerish", null.ok = TRUE)
+  checkmate::assert_matrix(data$mR, mode = "integerish", null.ok = TRUE)
+  checkmate::assert_matrix(data$mI, mode = "integerish", null.ok = FALSE)
+  checkmate::assert_matrix(data$mL, mode = "double", null.ok = TRUE)
+  checkmate::assert_matrix(data$mW, mode = "double", null.ok = TRUE)
+  # Optionally parameters
+  checkmate::assert_matrix(data$mF, mode = "double", null.ok = TRUE)
+  checkmate::assert_double(data$sM, lower = 0, len = 1, null.ok = TRUE)
+  checkmate::assert_double(data$sH, lower = 0, len = 1, null.ok = TRUE)
+  checkmate::assert_double(data$sC, lower = 0, len = 1, null.ok = TRUE)
 
   #---------------- Check parameters argument ---------------------------------#
-  # TODO
+
+  cat("checking parameter arguments \n")
+  checkmate::assert_list(parameters, null.ok = TRUE)
+  # Optionally data
+  checkmate::assert_array(parameters$aP, mode = "double", null.ok = TRUE)
+  checkmate::assert_matrix(parameters$mF, mode = "double", null.ok = TRUE)
+  checkmate::assert_double(parameters$sM, lower = 0, len = 1, null.ok = TRUE)
+  checkmate::assert_double(parameters$sH, lower = 0, len = 1, null.ok = TRUE)
+  checkmate::assert_double(parameters$sC, lower = 0, len = 1, null.ok = TRUE)
+  # Optionally specified initial values
+  checkmate::assert_numeric(parameters$vB, lower = 0, null.ok = TRUE)
 
   #---------------- Check settings argument -----------------------------------#
 
+  cat("checking settings arguments \n")
+  checkmate::assert_list(settings, null.ok = FALSE)
+  # Optionally specified settings
+  checkmate::assert_string(settings$error_family, null.ok = TRUE)
+  checkmate::assert_integerish(settings$time_varying, null.ok = FALSE)
+  checkmate::assert_string(settings$time_process, null.ok = FALSE)
+  checkmate::assert_integerish(settings$cycle_length, null.ok = FALSE)
+  checkmate::assert_integerish(settings$block_length, null.ok = FALSE)
+  checkmate::assert_string(settings$fish_rate_by, null.ok = FALSE)
+  checkmate::assert_integerish(settings$results_step, null.ok = FALSE)
+  checkmate::assert_integerish(settings$nlminb_loops, null.ok = FALSE)
+  checkmate::assert_integerish(settings$newton_steps, null.ok = FALSE)
+  checkmate::assert_integerish(settings$openmp_cores, null.ok = TRUE)
+
+  #---------------- Set default settings --------------------------------------#
+
   # Error family
-  if (is.null(settings$family)) {
-    family <- 1L
-  } else {
-    stopifnot(
-      is.numeric(settings$family),
-      length(settings$family) == 1,
-      is.element(settings$family, c(0L, 1L, 2L)))
-    family <- settings$family
-  }
-  # Results timestep
-  if (is.null(settings$timestep)) {
-    timestep <- 1L
-  } else {
-    stopifnot(
-      is.numeric(settings$timestep),
-      length(settings$timestep) == 1,
-      settings$timestep > 0,
-      settings$timestep == as.integer(settings$timestep))
-    timestep <- settings$timestep
-  }
-  # Number nlminb_loops
-  if (is.null(settings$nlminb_loops)) {
-    nlminb_loops <- 5L
-  } else {
-    stopifnot(
-      is.numeric(settings$nlminb_loops),
-      length(settings$nlminb_loops) == 1,
-      settings$nlminb_loops >= 0,
-      settings$nlminb_loops == as.integer(settings$nlminb_loops))
-    nlminb_loops <- settings$nlminb_loops
-  }
-  # Number newton_steps
-  if (is.null(settings$newton_steps)) {
-    newton_steps <- 5L
-  } else {
-    stopifnot(
-      is.numeric(settings$newton_steps),
-      length(settings$newton_steps) == 1,
-      settings$newton_steps >= 0,
-      settings$newton_steps == as.integer(settings$newton_steps))
-    newton_steps <- settings$newton_steps
-  }
-  # Number openmp_cores
-  if (is.null(settings$openmp_cores)) {
-    openmp_cores <- as.integer(parallel::detectCores() / 2)
-  } else {
-    stopifnot(
-      is.numeric(settings$openmp_cores),
-      length(settings$openmp_cores) == 1,
-      settings$openmp_cores > 0,
-      settings$openmp_cores <= parallel::detectCores(),
-      settings$openmp_cores == as.integer(settings$openmp_cores))
-    openmp_cores <- settings$openmp_cores
-  }
+  if (is.null(settings$error_family)) { settings$error_family <- 1L }
+  if (is.na(settings$error_family)) { settings$error_family <- 1L }
+  if (settings$error_family == "poisson") { error_family <- 0L }
+  else { error_family <- 1L }
+  # Time varying
+  if (is.null(settings$time_varying)) { settings$time_varying <- 0L }
+  if (is.na(settings$time_varying)) { settings$time_varying <- 0L }
+  if (settings$time_varying == 1L) { time_varying <- 1L }
+  else { time_varying <- 0L }
+  # Time process
+  if (is.null(settings$time_process)) { settings$time_process <- 0L }
+  if (is.na(settings$time_process)) { settings$time_process <- 0L }
+  if (settings$time_process == "rw") { time_process <- 1L }
+  else { time_process <- 0L }
+  # Cycle length
+  if (is.null(settings$cycle_length)) { settings$cycle_length <- 0L }
+  if (is.na(settings$cycle_length)) { settings$cycle_length <- 0L }
+  if (settings$cycle_length > 0L) { cycle_length <- settings$cycle_length }
+  else { cycle_length <- 0L }
+  # Block length
+  if (is.null(settings$block_length)) { settings$block_length <- 0L }
+  if (is.na(settings$block_length)) { settings$block_length <- 0L }
+  if (settings$block_length > 0L) { block_length <- settings$block_length }
+  else { block_length <- 0L }
+  # Fish rate by
+  if (is.null(settings$fish_rate_by)) { settings$fish_rate_by <- "none" }
+  if (is.na(settings$fish_rate_by)) { settings$fish_rate_by <- "none" }
+  if (settings$fish_rate_by == "none") { fish_rate_by <- "none" }
+  else if (settings$fish_rate_by == "block") { fish_rate_by <- "block" }
+  else if (settings$fish_rate_by == "area") { fish_rate_by <- "area" }
+  else if (settings$fish_rate_by == "both") { fish_rate_by <- "both" }
+  else { fish_rate_by <- "none" }
+  # Results step
+  if (is.null(settings$results_step)) { settings$results_step <- 1L }
+  if (is.na(settings$results_step)) { settings$results_step <- 1L }
+  if (settings$results_step > 1L) { results_step <- settings$results_step }
+  else { results_step <- 1L }
+  # Nlminb loops
+  if (is.null(settings$nlminb_loops)) { settings$nlminb_loops <- 5L }
+  if (is.na(settings$nlminb_loops)) { settings$nlminb_loops <- 5L }
+  if (settings$nlminb_loops > 0L) { nlminb_loops <- settings$nlminb_loops }
+  else { nlminb_loops <- 5L }
+  # Newton steps
+  if (is.null(settings$newton_steps)) { settings$newton_steps <- 5L }
+  if (is.na(settings$newton_steps)) { settings$newton_steps <- 5L }
+  if (settings$newton_steps > 0L) { newton_steps <- settings$newton_steps }
+  else { newton_steps <- 5L }
+  # OpenMP cores
+  if (is.null(settings$openmp_cores)) { settings$openmp_cores <- 1L }
+  if (is.na(settings$openmp_cores)) { settings$openmp_cores <- 1L }
+  if (settings$openmp_cores > 1L) { openmp_cores <- settings$openmp_cores }
+  else { openmp_cores <- 1L }
 
-  #---------------- Unpack arguments ------------------------------------------#
+  #---------------- Unpack required data --------------------------------------#
 
-  cat("unpacking arguments \n")
-  # Arguments tags, mT, mR, liberty
+  # Tag matrices
   if (is.element("tags", names(data))) {
-    # Check
-    checkmate::assert_list(data$tags)
-    checkmate::assert_true(all(is.element(c("mT", "mR"), names(data$tags))))
-    checkmate::assert_matrix(data$tags$mT, mode = "integer", ncols = 4)
-    checkmate::assert_matrix(data$tags$mR, mode = "integer", ncols = 6)
-    checkmate::assert_class(data$tags, "mmmTags")
-    # Assign
-    cat("using mT and mR from tags data \n")
     mT <- data$tags$mT
     mR <- data$tags$mR
-    cat("using time at liberty from tags data \n")
-    liberty <- data$tags$steps_liberty
   } else {
-    # Check
-    checkmate::assert_matrix(data$mT, mode = "integerish", ncols = 4)
-    checkmate::assert_matrix(data$mR, mode = "integerish", ncols = 6)
-    checkmate::assert_numeric(settings$liberty, len = 2, null.ok = TRUE)
-    # Assign
     mT <- data$mT
     mR <- data$mR
-    if (is.null(settings$liberty)) {
-      cat("using default time at liberty \n")
-      liberty <- c(0, Inf)
-    } else {
-      liberty <- numeric(2)
-      cat("using time at liberty from settings \n")
-      liberty[1] <- max(0, settings$liberty[1], na.rm = TRUE)
-      liberty[2] <- max(liberty[1], settings$liberty[2], na.rm = TRUE)
-    }
   }
-  cat(paste0("liberty = c(", liberty[1], ",", liberty[2], ") \n"))
-  # Argument mI
-  checkmate::assert_matrix(data$mI, mode = "integerish")
+  # Index matrix
   mI <- data$mI
-  # Argument mL: tag reporting rates
-  if (!is.null(data$mL)) {
-    mL <- data$mL
-  } else {
-    mL <- array(1L, dim = c(nt, na))
-  }
+  diag(mI) <- 0L
+
+  #---------------- Check required data ---------------------------------------#
+
+  # TODO: Including column names and values
 
 
+  #---------------- Create index values ---------------------------------------#
 
-
-
-  # DONE: mT, mR, and liberty, mI, mL
-
-  # TODO
-
-
-  # diag(I) <- 0L
-
-  #---------------- Check dimensions ------------------------------------------#
-
-  cat("checking argument dimensions \n")
-  # TODO:
-
-
-  #---------------- Create index vectors --------------------------------------#
-
-  cat("creating index vectors \n")
-  # TODO: Use settings input for these
-
-  # Index limits
+  cat("creating index values \n")
+  # Set index limits
   np <- sum(mI)
-  nt <- max(c(mT$release_step, mR$recover_step)) + 1L # Index starts at zero
-  na <- max(c(mT$release_area, mR$recover_area)) + 1L # Index starts at zero
-  ng <- max(c(mT$group, mR$group)) + 1L # Index starts at zero
-  # Secondary index limits
+  nt <- max(c(mT$release_step, mR$recover_step)) + 1L # Index from zero for C++
+  na <- max(c(mT$release_area, mR$recover_area)) + 1L # Index from zero for C++
+  ng <- max(c(mT$group, mR$group)) + 1L # Index from zero for C++
+  # Set for movement parameters
   if (settings$time_varying) {
     if (!settings$block_length && !settings$cycle_length) {
       npt <- nt
-      vpt <- c(seq_len(npt) - 1L) # Index from zero for C++
+      vpt <- c(seq_len(nt) - 1L) # Index from zero for C++
     } else if (settings$block_length && !settings$cycle_length) {
       npt <- ceiling(nt / settings$block_length)
       vpt <- rep(seq_len(npt) - 1L, each = settings$block_length)[seq_len(nt)]
@@ -215,120 +205,147 @@ mmmFit <- function(data,
     npt <- 1L
     vpt <- rep(0L, nt) # Index from zero for C++
   }
+  # Set for fishing rate time step
+  if (fish_rate_by == "none" || fish_rate_by == "area") {
+    nft <- 1L
+    vft <- rep(0L, nt) # Index from zero for C++
+  } else {
+    if (block_length) {
+      nft <- ceiling(nt / block_length)
+      vft <- rep(seq_len(nft) - 1L, each = block_length)[seq_len(nt)]
+    } else {
+      nft <- nt
+      vft <- c(seq_len(nt) - 1L) # Index from zero for C++
+    }
+  }
+  # Set for fishing rate areas
+  if (fish_rate_by == "none" || fish_rate_by == "block") {
+    nfa <- 1L
+    vfa <- rep(0L, na) # Index from zero for C++
+  } else {
+    nfa <- na
+    vfa <- c(seq_len(na) - 1L) # Index from zero for C++
+  }
 
-  nft <-  # Count of fishing rate time steps
-  nfa <-  # Count of fishing rate areas
-  # Index vectors
+  #---------------- Unpack arguments for tmb_data -----------------------------#
+
+  # Tag reporting rate
+  if (is.element("mL", names(data))) { mL <- data$mL }
+  else { mL <- array(1L, dim = c(nt, na)) }
+  # Fishing rate weighting
+  if (is.element("mW", names(data))) { mW <- data$mW }
+  else {
+    # TODO: Create mW (after indexes)
+  }
+
+  # TODO: get steps_liberty from somewhere
+
+  #---------------- Check arguments for tmb_data ------------------------------#
+
+  # TODO: Check for overlap between data and parameters. Which gets used?
 
 
 
-  #---------------- Create the tmb_data ---------------------------------------#
+  #---------------- Unpack arguments for tmb_parameters -----------------------#
 
+  # Array movement parameters
+  if (!is.null(parameters$aP)) { aP <- parameters$aP }
+  else { aP <- array(0, dim = c(npt, np, ng)) }
+  # Matrix log fishing mortality rate
+  if (!is.null(data$mF)) { mlF <- log(data$mF) }
+  else if (!is.null(parameters$mF)) { mlF <- log(parameters$mF) }
+  else { mlF <- array(-3, dim = c(nft, nfa)) }
+  # Vector log fishing selectivity and tag reporting bias
+  if (!is.null(parameters$vB)) { vlB <- log(parameters$vB) }
+  else { vlB <- numeric(length = ng) }
+  # Scalar log tag loss rate
+  if (!is.null(data$sH)) { slH <- log(data$sH) }
+  if (!is.null(parameters$sH)) { slH <- log(parameters$sH) }
+  else { slH <- -3L }
+  # Scalar log initial tag loss rate
+  if (!is.null(data$sC)) { slC <- log(data$sC) }
+  if (!is.null(parameters$sC)) { slC <- log(parameters$sC) }
+  else { slC <- -2L }
+  # Scalar log natural mortality
+  if (!is.null(data$sM)) { slM <- log(data$sM) }
+  if (!is.null(parameters$sM)) { slM <- log(parameters$sM) }
+  else { slM <- -2L }
+  # Scalar log negative binomial dispersal
+  slD <- 0L
+
+  #---------------- Check arguments for tmb_parameters ------------------------#
+
+  # TODO: Check that aP matches npt, np, ng
+  # TODO: Check that mF matches dimensions if present
+
+
+
+
+  #---------------- Create tmb_data -------------------------------------------#
+
+  # TODO: add steps_liberty from somewhere
   cat("creating tmb_data \n")
   tmb_data <- list(
     mT = mT,
     mR = mR,
     mI = mI,
     mL = mL,
-    family = family,
-    # Index vectors
+    mW = mW,
+    error_family = error_family,
+    # Index limits
     np = np, # Index limits: number of parameters
     nt = nt, # Index limits: number of time steps
     na = na, # Index limits: number of areas
     ng = ng, # Index limits: number of groups
-    npt = , # Secondary index limits: number of parameter time steps
-    nft = , # Secondary index limits: number of fishing rate time steps
-    nfa = , # Secondary index limits: number of fishing rate areas
-    vpt = , #
-    vft = , #
-    vfa = , #
+    npt = npt, # Secondary index limits: number of parameter time steps
+    nft = nft, # Secondary index limits: number of fishing rate time steps
+    nfa = nfa, # Secondary index limits: number of fishing rate areas
+    # Index vectors
+    vpt = vpt, # Index vector: time step for movement parameters
+    vft = vft, # Index vector: time step for fishing rate
+    vfa = vfa # Index vector: area for fishing rate
   )
 
-  #---------------- Create parameter values -----------------------------------#
-
-  # Array movement parameters
-  if (!is.null(parameters$aP)) {
-    aP <- parameters$aP
-  } else {
-    aP <- array(0, dim = c(npt, np, ng))
-  }
-  # Matrix log fishing mortality rate
-  if (!is.null(data$mF)) {
-    mlF <- log(data$mF)
-  } else {
-    mlF <- array(-3, dim = c(nft, nfa)) # nfg
-  }
-  # Vector log fishing selectivity and tag reporting bias
-  if (!is.null(data$mB)) {
-    mlB <- log(data$mB)
-  } else {
-    mlB <- array(0, dim = c(nba, nbg))
-  }
-  # Scalar log tag loss rate
-  if (!is.null(data$sH)) {
-    slH <- log(data$sH)
-  } else {
-    slH <- -3L
-  }
-  # Scalar log initial tag loss rate
-  if (!is.null(data$sC)) {
-    slC <- log(data$sC)
-  } else {
-    slC <- -2L
-  }
-  # Scalar log natural mortality
-  if (!is.null(data$sM)) {
-    slM <- log(data$sM)
-  } else {
-    slM <- -2L
-  }
-  # Scalar log negative binomial dispersal
-  slD <- 0L
-
-  #---------------- Create the tmb_parameters ---------------------------------#
+  #---------------- Create tmb_parameters -------------------------------------#
 
   cat("creating tmb_parameters \n")
   tmb_parameters <- list(
     aP = aP, # Array: movement parameters
     mlF = mlF, # Matrix: log fishing mortality rates
-    mlB = mlB, # Matrix: log fishery selectivity and tag reporting bias
+    vlB = vlB, # Matrix: log fishery selectivity and tag reporting bias
     slH = slH, # Scalar: log tag loss rate
     slC = slC, # Scalar: log initial tag loss rate
     slM = slM, # Scalar: natural mortality
     slD = slD # Scalar: negative binomial dispersion
   )
 
-  #---------------- Create the tmb_map ----------------------------------------#
+  #---------------- Create tmb_random -----------------------------------------#
+
+  cat("creating tmb_random \n")
+  if (is.null(random)) { tmb_random <- character() }
+  else { tmb_random <- random }
+
+  #---------------- Create tmb_map --------------------------------------------#
 
   cat("creating tmb_map \n")
   tmb_map <- list()
   # Default
   if (!is.null(data$mF)) { tmb_map <- c(tmb_map, mlF = NA) }
-  if (!is.null(data$mB)) { tmb_map <- c(tmb_map, mlB = NA) }
   if (!is.null(data$sH)) { tmb_map <- c(tmb_map, slH = NA) }
   if (!is.null(data$sC)) { tmb_map <- c(tmb_map, slC = NA) }
   if (!is.null(data$sM)) { tmb_map <- c(tmb_map, slM = NA) }
-  if (family == 0) { tmb_map <- c(tmb_map, slD = NA)}
+  if (error_family == 0) { tmb_map <- c(tmb_map, slD = NA)}
   # User defined
   if (!is.null(map$mF)) { tmb_map$mlF <- map$mF }
-  if (!is.null(map$mB)) { tmb_map$mlB <- map$mB }
+  if (!is.null(map$vB)) { tmb_map$vlB <- map$vB }
   if (!is.null(map$sH)) { tmb_map$slH <- map$sH }
   if (!is.null(map$sC)) { tmb_map$slC <- map$sC }
   if (!is.null(map$sM)) { tmb_map$slM <- map$sM }
 
-  #---------------- Create the tmb_random -------------------------------------#
+  #---------------- Set the number of OpenMP cores ----------------------------#
 
-  cat("creating tmb_random \n")
-  if (is.null(random)) {
-    tmb_random <- character()
-  } else {
-    tmb_random <- random
-  }
-
-  #---------------- Define the number of cores --------------------------------#
-
-  cat("setting openmp_cores")
-  if (!is.null(settings$openmp_cores)) {TMB::openmp(n = settings$openmp_cores)}
+  cat(paste0("using ", openmp_cores, " openmp cores"))
+  TMB::openmp(n = openmp_cores)
 
   #---------------- Create the ADFun object -----------------------------------#
 
@@ -440,7 +457,7 @@ mmmFit <- function(data,
     adfun       = adfun,
     model       = model,
     mgc         = mgc),
-    class       = c("mmmFit", "mmmTMB"))
+    class       = c("mmmFit"))
 }
 
 
@@ -864,7 +881,7 @@ mmmSet <- function (error_family = c("nb1", "poisson"),
                     time_varying = 0,
                     time_process = c("none", "rw"),
                     cycle_length = 0,
-                    block_length = 1,
+                    block_length = 0,
                     fish_rate_by = c("none", "block", "area", "both"),
                     results_step = 1,
                     nlminb_loops = 5,
