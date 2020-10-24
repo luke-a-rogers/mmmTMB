@@ -7,54 +7,54 @@
 mmmFit(
   data,
   parameters = NULL,
-  map = NULL,
   random = NULL,
+  map = NULL,
   settings = mmmSet(),
   control = mmmControl()
 )
 }
 \arguments{
-\item{data}{A list of named data objects. See details.}
+\item{data}{A list of named data objects. See Details.}
 
-\item{parameters}{A list of initial parameter values. See details.}
+\item{parameters}{A list of initial parameter values. See Details.}
 
-\item{map}{A list of values to override defaults.}
+\item{random}{A character vector of parameters to estimate as random effects.}
 
-\item{random}{A character vector of parameters to treat as random effects.}
+\item{map}{A list of \code{map} values to override defaults.
+See \code{TMB::MakeADFun()}.}
 
-\item{settings}{A list of values that define the model. See details.}
+\item{settings}{A list of values that define the model.
+See \code{mmmSet()}.}
 
-\item{nlminb_control}{A list. See \code{mmmControl()}.}
+\item{control}{A list of optimization control options to pass to
+\code{stats::nlminb()}. See \code{mmmControl()}.}
 }
 \value{
-A list of class \code{mmmFit} and \code{mmmTMB}.
+A list of class \code{mmmFit}.
 }
 \description{
 Estimate movement rates
 }
 \details{
-The following must be included in the \code{data} list: \itemize{
-\item \code{T} An array holding tagged release counts. See \code{arrayT()}.
-\item \code{R} An array holding recovered counts. See \code{arrayR()}.
-\item \code{I} A square binary matrix indicating which direct movement
-rates to estimate.} The following can be optionally included in the
-\code{data} list and are otherwise excluded from the model \itemize{ \item
-\code{lambda} An array of tag reporting rates. } The following can be
-optionally included in the \code{data} list to be treated as data, or
-omitted to be treated as parameters with default initial values, or
-included in the \code{parameters} list along with initial values \itemize{
-\item \code{M} An array of instantaneous natural mortality rates. \item
-\code{F} An array of instantaneous fishing mortality rates. \item \code{b}
-A vector of selectivity values. \item \code{h} A scalar instantaneous tag
-loss rate. \item \code{c} A scalar mean initial tag loss rate.} The
-following can be included in the \code{settings} list, or omitted to be
-assigned default values \itemize{ \item \code{family} An integer specifying
-the error family 0: Poisson; 1: NB1; 2: NB2. \item \code{timestep} An
-integer specifying the results time step as a multiple of the data time
-step. \item \code{nlminb_loops} An integer specifying the number of
-\code{nlminb} loops. \item \code{newton_steps} An integer specifying the
-number of Newton steps. \item \code{openmp_cores} An integer specifying the
-number of \code{OpenMP} parallel cores.}
+The list argument \code{data} must contain
+\itemize{
+\item{\code{tags} a list of class \code{mmmTags} (recommended: see
+\code{mmmTags()}) OR both \code{mT} and \code{mR} integer matrices
+of tag release and recovery counts, respectively, formatted as
+described in \code{mmmTags()}}
+\item{\code{mI} a square binary index matrix representing movement
+between areas (from rows to columns). Ones represent movement that
+is allowed from one time step to the next. Zeros off the diagonal
+represent disallowed movement. Numbers on the diagonal are ignored
+because self-movement is always allowed.}
+}
+The list argument \code{data} may optionally contain
+\itemize{
+\item{\code{mL} a matrix of tag reporting rates (proportions)
+in which the time step is given by the row and the area is
+given by the column. Defaults to ones (full reporting).}
+\item{mW}
+}
 }
 \examples{
 

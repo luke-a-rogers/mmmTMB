@@ -9,7 +9,7 @@ mmmSet(
   time_varying = 0,
   time_process = c("none", "rw"),
   cycle_length = 0,
-  block_length = 1,
+  block_length = 0,
   fish_rate_by = c("none", "block", "area", "both"),
   results_step = 1,
   nlminb_loops = 5,
