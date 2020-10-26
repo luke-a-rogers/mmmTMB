@@ -7,6 +7,7 @@
 #' @param time_step A character string. One of \code{year}, \code{month}, or
 #'   \code{day}.
 #' @param date_lims A character vector with two elements. "%Y-%M-%D".
+#' @param days_liberty Integer scalar. Minimum number of days at liberty.
 #'
 #' @details TBD
 #'
@@ -40,7 +41,7 @@
 #' groups <- list(m = "M", f = "F")
 #' time_step <- "year"
 #' date_lims <- c("2010-01-01", "2020-12-31")
-#' days_liberty <- c(0L, Inf)
+#' days_liberty <- 0L
 #'
 #' tags <- mmmTags(x, y, cols, groups, time_step, date_lims, days_liberty)
 #'
@@ -51,7 +52,7 @@ mmmTags <- function (x,
                      groups = NULL,
                      time_step = NULL,
                      date_lims = NULL,
-                     days_liberty = c(0L, Inf)) {
+                     days_liberty = NULL) {
 
   # TODO: Check that group is identical between release and recover
 
@@ -62,7 +63,24 @@ mmmTags <- function (x,
   checkmate::assert_list(cols, unique = TRUE)
   checkmate::assert_list(groups, unique = TRUE, null.ok = TRUE)
   checkmate::assert_character(time_step, len = 1, null.ok = TRUE)
-  checkmate::assert_numeric(days_liberty, lower = 0, len = 2)
+  checkmate::assert_integerish(days_liberty, lower = 0, len = 1, null.ok = TRUE)
+
+  #--------------- Check time step --------------------------------------------#
+
+  if (is.null(time_step)) { time_step <- "year" }
+  else if (is.na(time_step)) { time_step <- "year" }
+  else if (is.element(time_step, c("year", "month", "day"))) { }
+  else { time_step <- "year" }
+
+  #--------------- Set default values -----------------------------------------#
+
+  if (time_step == "year") {
+    days_liberty <- max(days_liberty, 365.25, na.rm = TRUE)
+  } else if (time_step == "month") {
+    days_liberty <- max(days_liberty, 31, na.rm = TRUE)
+  } else {
+    days_liberty <- max(days_liberty, 1, na.rm = TRUE)
+  }
 
   #--------------- Check required columns -------------------------------------#
 
@@ -162,16 +180,16 @@ mmmTags <- function (x,
   cat(paste0("duplicate release tags removed: ", x_rows - nrow(x)), "\n")
   cat(paste0("duplicate recover tags removed: ", y_rows - nrow(y)), "\n")
 
+  #--------------- Filter x by days at liberty --------------------------------#
+
+  # Insufficient days at liberty
+  d <- dplyr::filter(y, recover_date - release_date < days_liberty)
+  # Remove d from x
+  x <- dplyr::anti_join(x, d, by = colnames_x)[, colnames_x]
+
   #--------------- Filter y by x ----------------------------------------------#
 
   y <- dplyr::inner_join(x, y, by = colnames_x)[, colnames_y]
-
-  #--------------- Filter y by days at liberty --------------------------------#
-
-  # Time steps at liberty must also be tracked in the movement model
-  y <- y %>% dplyr::filter(
-    recover_date - release_date >= days_liberty[1],
-    recover_date - release_date <= days_liberty[2])
 
   #--------------- Convert date to time step ----------------------------------#
 
@@ -186,9 +204,9 @@ mmmTags <- function (x,
         lubridate::year(recover_date) - lubridate::year(date_lims[1])))
     # Convert liberty
     steps_liberty <- round(exp(log(days_liberty) - log(365.25)))
-    cat(paste("days at liberty:", days_liberty[1], days_liberty[2]), "\n")
-    cat(paste("steps at liberty:", steps_liberty[1], steps_liberty[2]), "\n")
-    cat("use caution if days and steps (years) at liberty disagree.\n")
+    cat(paste("days at liberty:", days_liberty), "\n")
+    cat(paste("steps at liberty:", steps_liberty[1]), "\n")
+    cat("use caution if days and steps at liberty disagree in duration. \n")
   } else if (time_step == "month") {
     x <- x %>% dplyr::mutate(
       release_step = as.integer(
@@ -213,7 +231,7 @@ mmmTags <- function (x,
       release_step = as.integer(release_date - date_lims[1]),
       recover_step = as.integer(recover_date - date_lims[1]))
     steps_liberty <- days_liberty
-    cat(paste("days at liberty:", days_liberty[1], days_liberty[2]), "\n")
+    cat(paste("days at liberty:", days_liberty), "\n")
   } else {
     stop("time_step must be one of 'year', 'month', or 'day'.")
   }
@@ -270,7 +288,7 @@ mmmTags <- function (x,
     time_step = time_step,
     date_lims = date_lims,
     days_liberty = days_liberty,
-    steps_liberty = steps_liberty),
+    init_liberty = steps_liberty),
     class = "mmmTags"))
 }
 
