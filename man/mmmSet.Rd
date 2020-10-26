@@ -6,6 +6,7 @@
 \usage{
 mmmSet(
   error_family = c("nb1", "poisson"),
+  span_liberty = c(1, Inf),
   time_varying = 0,
   time_process = c("none", "rw"),
   cycle_length = 0,
@@ -19,6 +20,10 @@ mmmSet(
 }
 \arguments{
 \item{error_family}{Character. One of \code{"nb1"} or \code{"poisson"}}
+
+\item{span_liberty}{Integer. Min and max time steps at liberty before
+recapture. The initial time at liberty \code{span_liberty[1]} should
+agree in duration with \code{days_liberty} from \code{mmmTags()}.}
 
 \item{time_varying}{Logical. Should movement rates vary through time?}
 

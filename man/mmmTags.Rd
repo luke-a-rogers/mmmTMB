@@ -11,7 +11,7 @@ mmmTags(
   groups = NULL,
   time_step = NULL,
   date_lims = NULL,
-  days_liberty = c(0L, Inf)
+  days_liberty = NULL
 )
 }
 \arguments{
@@ -27,6 +27,8 @@ mmmTags(
 \code{day}.}
 
 \item{date_lims}{A character vector with two elements. "\%Y-\%M-\%D".}
+
+\item{days_liberty}{Integer scalar. Minimum number of days at liberty.}
 }
 \value{
 
@@ -61,7 +63,7 @@ cols <- list(
 groups <- list(m = "M", f = "F")
 time_step <- "year"
 date_lims <- c("2010-01-01", "2020-12-31")
-days_liberty <- c(0L, Inf)
+days_liberty <- 0L
 
 tags <- mmmTags(x, y, cols, groups, time_step, date_lims, days_liberty)
 
