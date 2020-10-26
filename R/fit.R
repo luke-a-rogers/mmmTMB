@@ -64,7 +64,7 @@ mmmFit <- function(data,
   checkmate::assert_class(data$tags, "mmmTags", null.ok = TRUE)
   checkmate::assert_matrix(data$mT, mode = "integerish", null.ok = TRUE)
   checkmate::assert_matrix(data$mR, mode = "integerish", null.ok = TRUE)
-  checkmate::assert_matrix(data$mI, mode = "integerish", null.ok = FALSE)
+  checkmate::assert_matrix(data$mI, mode = "integerish", null.ok = TRUE)
   checkmate::assert_matrix(data$mL, mode = "double", null.ok = TRUE)
   checkmate::assert_matrix(data$mW, mode = "double", null.ok = TRUE)
   # Optionally parameters
@@ -106,100 +106,139 @@ mmmFit <- function(data,
 
   # Error family
   if (is.null(settings$error_family)) { settings$error_family <- 1L }
-  if (is.na(settings$error_family)) { settings$error_family <- 1L }
-  if (settings$error_family == "poisson") { error_family <- 0L }
+  else if (is.na(settings$error_family)) { settings$error_family <- 1L }
+  else if (settings$error_family == "poisson") { error_family <- 0L }
   else { error_family <- 1L }
   # Time varying
   if (is.null(settings$time_varying)) { settings$time_varying <- 0L }
-  if (is.na(settings$time_varying)) { settings$time_varying <- 0L }
-  if (settings$time_varying == 1L) { time_varying <- 1L }
+  else if (is.na(settings$time_varying)) { settings$time_varying <- 0L }
+  else if (settings$time_varying == 1L) { time_varying <- 1L }
   else { time_varying <- 0L }
   # Time process
   if (is.null(settings$time_process)) { settings$time_process <- 0L }
-  if (is.na(settings$time_process)) { settings$time_process <- 0L }
-  if (settings$time_process == "rw") { time_process <- 1L }
+  else if (is.na(settings$time_process)) { settings$time_process <- 0L }
+  else if (settings$time_process == "rw") { time_process <- 1L }
   else { time_process <- 0L }
   # Cycle length
   if (is.null(settings$cycle_length)) { settings$cycle_length <- 0L }
-  if (is.na(settings$cycle_length)) { settings$cycle_length <- 0L }
-  if (settings$cycle_length > 0L) { cycle_length <- settings$cycle_length }
+  else if (is.na(settings$cycle_length)) { settings$cycle_length <- 0L }
+  else if (settings$cycle_length > 0L) { cycle_length <- settings$cycle_length }
   else { cycle_length <- 0L }
   # Block length
   if (is.null(settings$block_length)) { settings$block_length <- 0L }
-  if (is.na(settings$block_length)) { settings$block_length <- 0L }
-  if (settings$block_length > 0L) { block_length <- settings$block_length }
+  else if (is.na(settings$block_length)) { settings$block_length <- 0L }
+  else if (settings$block_length > 0L) { block_length <- settings$block_length }
   else { block_length <- 0L }
   # Fish rate by
   if (is.null(settings$fish_rate_by)) { settings$fish_rate_by <- "none" }
-  if (is.na(settings$fish_rate_by)) { settings$fish_rate_by <- "none" }
-  if (settings$fish_rate_by == "none") { fish_rate_by <- "none" }
+  else if (is.na(settings$fish_rate_by)) { settings$fish_rate_by <- "none" }
+  else if (settings$fish_rate_by == "none") { fish_rate_by <- "none" }
   else if (settings$fish_rate_by == "block") { fish_rate_by <- "block" }
   else if (settings$fish_rate_by == "area") { fish_rate_by <- "area" }
   else if (settings$fish_rate_by == "both") { fish_rate_by <- "both" }
   else { fish_rate_by <- "none" }
   # Results step
   if (is.null(settings$results_step)) { settings$results_step <- 1L }
-  if (is.na(settings$results_step)) { settings$results_step <- 1L }
-  if (settings$results_step > 1L) { results_step <- settings$results_step }
+  else if (is.na(settings$results_step)) { settings$results_step <- 1L }
+  else if (settings$results_step > 1L) { results_step <- settings$results_step }
   else { results_step <- 1L }
   # Nlminb loops
   if (is.null(settings$nlminb_loops)) { settings$nlminb_loops <- 5L }
-  if (is.na(settings$nlminb_loops)) { settings$nlminb_loops <- 5L }
-  if (settings$nlminb_loops > 0L) { nlminb_loops <- settings$nlminb_loops }
+  else if (is.na(settings$nlminb_loops)) { settings$nlminb_loops <- 5L }
+  else if (settings$nlminb_loops > 0L) { nlminb_loops <- settings$nlminb_loops }
   else { nlminb_loops <- 5L }
   # Newton steps
   if (is.null(settings$newton_steps)) { settings$newton_steps <- 5L }
-  if (is.na(settings$newton_steps)) { settings$newton_steps <- 5L }
-  if (settings$newton_steps > 0L) { newton_steps <- settings$newton_steps }
+  else if (is.na(settings$newton_steps)) { settings$newton_steps <- 5L }
+  else if (settings$newton_steps > 0L) { newton_steps <- settings$newton_steps }
   else { newton_steps <- 5L }
   # OpenMP cores
   if (is.null(settings$openmp_cores)) { settings$openmp_cores <- 1L }
-  if (is.na(settings$openmp_cores)) { settings$openmp_cores <- 1L }
-  if (settings$openmp_cores > 1L) { openmp_cores <- settings$openmp_cores }
+  else if (is.na(settings$openmp_cores)) { settings$openmp_cores <- 1L }
+  else if (settings$openmp_cores > 1L) { openmp_cores <- settings$openmp_cores }
   else { openmp_cores <- 1L }
 
   #---------------- Unpack required data --------------------------------------#
 
   # Tag matrices
-  if (is.element("tags", names(data))) {
+  if (!is.null(data$tags)) {
     mT <- data$tags$mT
     mR <- data$tags$mR
   } else {
     mT <- data$mT
     mR <- data$mR
   }
-  # Index matrix
-  mI <- data$mI
-  diag(mI) <- 0L
 
   #---------------- Check required data ---------------------------------------#
 
-  # TODO: Including column names and values
+  # Tag releases
+  checkmate::assert_matrix(mT, mode = "integerish", any.missing = FALSE)
+  checkmate::assert_matrix(mT, ncols = 4, null.ok = FALSE)
+  checkmate::assert_true(all(mT >= 0))
+  checkmate::assert_true(colnames(mT)[1] == "release_step")
+  checkmate::assert_true(colnames(mT)[2] == "release_area")
+  checkmate::assert_true(colnames(mT)[3] == "group")
+  checkmate::assert_true(colnames(mT)[4] == "count")
+  # Tag recoveries
+  checkmate::assert_matrix(mR, mode = "integerish", any.missing = FALSE)
+  checkmate::assert_matrix(mR, ncols = 6, null.ok = FALSE)
+  checkmate::assert_true(all(mR >= 0))
+  checkmate::assert_true(colnames(mR)[1] == "release_step")
+  checkmate::assert_true(colnames(mR)[2] == "release_area")
+  checkmate::assert_true(colnames(mR)[3] == "recover_step")
+  checkmate::assert_true(colnames(mR)[4] == "recover_area")
+  checkmate::assert_true(colnames(mR)[5] == "group")
+  checkmate::assert_true(colnames(mR)[6] == "count")
+  # Check values
+  if (min(mT$release_step) > 0) cat("caution: time step not indexed from zero")
 
+  #---------------- Create index limits ---------------------------------------#
 
-  #---------------- Create index values ---------------------------------------#
-
-  cat("creating index values \n")
+  cat("creating index limits \n")
   # Set index limits
-  np <- sum(mI)
   nt <- max(c(mT$release_step, mR$recover_step)) + 1L # Index from zero for C++
   na <- max(c(mT$release_area, mR$recover_area)) + 1L # Index from zero for C++
   ng <- max(c(mT$group, mR$group)) + 1L # Index from zero for C++
+
+  #---------------- Unpack index matrix ---------------------------------------#
+
+  if (!is.null(data$mI)) {
+    mI <- data$mI
+    diag(mI) <- 0
+  } else {
+    mI <- matrix(1L, nrow = na, ncol = na)
+    diag(mI) <- 0L
+  }
+
+  #---------------- Check index matrix ----------------------------------------#
+
+  checkmate::assert_matrix(mI, mode = "integerish", null.ok = FALSE)
+  checkmate::assert_matrix(mI, any.missing = FALSE, null.ok = FALSE)
+  checkmate::assert_true(nrow(mI) == ncol(mI))
+  checkmate::assert_true(all(is.element(mI, 0L:1L)))
+
+  #---------------- Create parameter index limit ------------------------------#
+
+  # Set parameter index limit
+  np <- sum(mI)
+
+  #---------------- Create index values ---------------------------------------#
+
   # Set for movement parameters
-  if (settings$time_varying) {
-    if (!settings$block_length && !settings$cycle_length) {
+  if (time_varying) {
+    if (!block_length && !cycle_length) {
       npt <- nt
       vpt <- c(seq_len(nt) - 1L) # Index from zero for C++
-    } else if (settings$block_length && !settings$cycle_length) {
-      npt <- ceiling(nt / settings$block_length)
-      vpt <- rep(seq_len(npt) - 1L, each = settings$block_length)[seq_len(nt)]
-    } else if (settings$cycle_length && !settings$block_length) {
-      npt <- settings$cycle_length
+    } else if (block_length && !cycle_length) {
+      npt <- ceiling(nt / block_length)
+      vpt <- rep(seq_len(npt) - 1L, each = block_length)[seq_len(nt)]
+    } else if (cycle_length && !block_length) {
+      npt <- cycle_length
       vpt <- rep(seq_len(npt) - 1L, ceiling(nt / npt))[seq_len(nt)]
     } else {
-      npt <- settings$cycle_length
+      npt <- cycle_length
       vpt_cycle <- rep(seq_len(npt) - 1L, ceiling(nt / npt))[seq_len(nt)]
-      vpt <- rep(vpt_cycle, each = settings$block_length)[seq_len(nt)]
+      vpt <- rep(vpt_cycle, each = block_length)[seq_len(nt)]
     }
   } else {
     npt <- 1L
