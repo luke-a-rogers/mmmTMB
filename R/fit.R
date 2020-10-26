@@ -105,56 +105,60 @@ mmmFit <- function(data,
   #---------------- Set default settings --------------------------------------#
 
   # Error family
-  if (is.null(settings$error_family)) { settings$error_family <- 1L }
-  else if (is.na(settings$error_family)) { settings$error_family <- 1L }
+  if (is.null(settings$error_family)) { error_family <- 1L }
+  else if (is.na(settings$error_family)) { error_family <- 1L }
   else if (settings$error_family == "poisson") { error_family <- 0L }
   else { error_family <- 1L }
+  # Span liberty
+  if (is.null(settings$span_liberty)) { span_liberty <- c(1, Inf) }
+  else if (is.na(settings$span_liberty)) { span_liberty <- c(1, Inf) }
+  else { span_liberty <- settings$span_liberty }
   # Time varying
-  if (is.null(settings$time_varying)) { settings$time_varying <- 0L }
-  else if (is.na(settings$time_varying)) { settings$time_varying <- 0L }
+  if (is.null(settings$time_varying)) { time_varying <- 0L }
+  else if (is.na(settings$time_varying)) { time_varying <- 0L }
   else if (settings$time_varying == 1L) { time_varying <- 1L }
   else { time_varying <- 0L }
   # Time process
-  if (is.null(settings$time_process)) { settings$time_process <- 0L }
-  else if (is.na(settings$time_process)) { settings$time_process <- 0L }
+  if (is.null(settings$time_process)) { time_process <- 0L }
+  else if (is.na(settings$time_process)) { time_process <- 0L }
   else if (settings$time_process == "rw") { time_process <- 1L }
   else { time_process <- 0L }
   # Cycle length
-  if (is.null(settings$cycle_length)) { settings$cycle_length <- 0L }
-  else if (is.na(settings$cycle_length)) { settings$cycle_length <- 0L }
+  if (is.null(settings$cycle_length)) { cycle_length <- 0L }
+  else if (is.na(settings$cycle_length)) { cycle_length <- 0L }
   else if (settings$cycle_length > 0L) { cycle_length <- settings$cycle_length }
   else { cycle_length <- 0L }
   # Block length
-  if (is.null(settings$block_length)) { settings$block_length <- 0L }
-  else if (is.na(settings$block_length)) { settings$block_length <- 0L }
+  if (is.null(settings$block_length)) { block_length <- 0L }
+  else if (is.na(settings$block_length)) { block_length <- 0L }
   else if (settings$block_length > 0L) { block_length <- settings$block_length }
   else { block_length <- 0L }
   # Fish rate by
-  if (is.null(settings$fish_rate_by)) { settings$fish_rate_by <- "none" }
-  else if (is.na(settings$fish_rate_by)) { settings$fish_rate_by <- "none" }
+  if (is.null(settings$fish_rate_by)) { fish_rate_by <- "none" }
+  else if (is.na(settings$fish_rate_by)) { fish_rate_by <- "none" }
   else if (settings$fish_rate_by == "none") { fish_rate_by <- "none" }
   else if (settings$fish_rate_by == "block") { fish_rate_by <- "block" }
   else if (settings$fish_rate_by == "area") { fish_rate_by <- "area" }
   else if (settings$fish_rate_by == "both") { fish_rate_by <- "both" }
   else { fish_rate_by <- "none" }
   # Results step
-  if (is.null(settings$results_step)) { settings$results_step <- 1L }
-  else if (is.na(settings$results_step)) { settings$results_step <- 1L }
+  if (is.null(settings$results_step)) { results_step <- 1L }
+  else if (is.na(settings$results_step)) { results_step <- 1L }
   else if (settings$results_step > 1L) { results_step <- settings$results_step }
   else { results_step <- 1L }
   # Nlminb loops
-  if (is.null(settings$nlminb_loops)) { settings$nlminb_loops <- 5L }
-  else if (is.na(settings$nlminb_loops)) { settings$nlminb_loops <- 5L }
+  if (is.null(settings$nlminb_loops)) { nlminb_loops <- 5L }
+  else if (is.na(settings$nlminb_loops)) { nlminb_loops <- 5L }
   else if (settings$nlminb_loops > 0L) { nlminb_loops <- settings$nlminb_loops }
   else { nlminb_loops <- 5L }
   # Newton steps
-  if (is.null(settings$newton_steps)) { settings$newton_steps <- 5L }
-  else if (is.na(settings$newton_steps)) { settings$newton_steps <- 5L }
+  if (is.null(settings$newton_steps)) { newton_steps <- 5L }
+  else if (is.na(settings$newton_steps)) { newton_steps <- 5L }
   else if (settings$newton_steps > 0L) { newton_steps <- settings$newton_steps }
   else { newton_steps <- 5L }
   # OpenMP cores
-  if (is.null(settings$openmp_cores)) { settings$openmp_cores <- 1L }
-  else if (is.na(settings$openmp_cores)) { settings$openmp_cores <- 1L }
+  if (is.null(settings$openmp_cores)) { openmp_cores <- 1L }
+  else if (is.na(settings$openmp_cores)) { openmp_cores <- 1L }
   else if (settings$openmp_cores > 1L) { openmp_cores <- settings$openmp_cores }
   else { openmp_cores <- 1L }
 
@@ -222,7 +226,7 @@ mmmFit <- function(data,
   # Set parameter index limit
   np <- sum(mI)
 
-  #---------------- Create index values ---------------------------------------#
+  #---------------- Create parameter indexes ----------------------------------#
 
   # Set for movement parameters
   if (time_varying) {
@@ -244,6 +248,9 @@ mmmFit <- function(data,
     npt <- 1L
     vpt <- rep(0L, nt) # Index from zero for C++
   }
+
+  #---------------- Create fishing rate indexes -------------------------------#
+
   # Set for fishing rate time step
   if (fish_rate_by == "none" || fish_rate_by == "area") {
     nft <- 1L
@@ -269,21 +276,72 @@ mmmFit <- function(data,
   #---------------- Unpack arguments for tmb_data -----------------------------#
 
   # Tag reporting rate
-  if (is.element("mL", names(data))) { mL <- data$mL }
-  else { mL <- array(1L, dim = c(nt, na)) }
+  if (!is.null(data$mL)) { mL <- data$mL }
+  else { mL <- matrix(1, nrow = 1L, ncol = 1L) }
   # Fishing rate weighting
-  if (is.element("mW", names(data))) { mW <- data$mW }
-  else {
-    # TODO: Create mW (after indexes)
-  }
-
-  # TODO: get steps_liberty from somewhere
+  if (!is.null(data$mW)) { mW <- data$mW }
+  else { mW <- matrix(1, nrow = 1L, ncol = 1L) }
 
   #---------------- Check arguments for tmb_data ------------------------------#
 
-  # TODO: Check for overlap between data and parameters. Which gets used?
+  # Tag reporting rate
+  checkmate::assert_matrix(mL, mode = "double", null.ok = FALSE)
+  checkmate::assert_matrix(mL, any.missing = FALSE, null.ok = FALSE)
+  checkmate::assert_true(ncol(mL) == 1 || ncol(mL) == na)
+  checkmate::assert_true(all(mL >= 0))
+  # Fishing rate weighting
+  checkmate::assert_matrix(mW, mode = "double", null.ok = FALSE)
+  checkmate::assert_matrix(mW, any.missing = FALSE, null.ok = FALSE)
+  checkmate::assert_true(ncol(mW) == 1 || ncol(mW) == na)
+  checkmate::assert_true(all(mW >= 0))
+  checkmate::assert_true(all(colSums(mW) == 1))
 
+  #---------------- Create tag reporting rate indexes -------------------------#
 
+  # Set for time step
+  if (nrow(mL) == 1L) {
+    nlt <- 1L
+    vlt <- rep(0L, nt)
+  } else {
+    nlt <- nt
+    vlt <- c(seq_len(nt) - 1L)
+  }
+  # Set for areas
+  if (ncol(mL) == 1L) {
+    nla <- 1L
+    vla <- rep(0L, na)
+  } else {
+    nla <- na
+    vla <- c(seq_len(na) - 1L)
+  }
+
+  #---------------- Create fishing rate weighting indexes ---------------------#
+
+  # Set for time step
+  if (nrow(mW) == 1L) {
+    nwt <- 1L
+    vwt <- rep(0L, nt)
+  } else {
+    nwt <- nrow(mW)
+    vwt <- rep(c(seq_len(nwt) - 1L), ceiling(nt / nwt))[seq_len(nt)]
+  }
+  # Set for areas
+  if (ncol(mW) == 1L) {
+    nwa <- 1L
+    vwa <- rep(0L, na)
+  } else {
+    nwa <- na
+    vwa <- c(seq_len(na) - 1L)
+  }
+
+  #---------------- Update time span at liberty -------------------------------#
+
+  if (!is.null(data$tags)) { init_liberty <- data$tags$init_liberty }
+  else { init_liberty <- 1L }
+  if (span_liberty[1] < init_liberty) {
+    span_liberty[1] <- init_liberty
+    cat(paste0("using initial time at liberty from mmmTags(): ", init_liberty))
+  }
 
   #---------------- Unpack arguments for tmb_parameters -----------------------#
 
@@ -291,26 +349,26 @@ mmmFit <- function(data,
   if (!is.null(parameters$aP)) { aP <- parameters$aP }
   else { aP <- array(0, dim = c(npt, np, ng)) }
   # Matrix log fishing mortality rate
-  if (!is.null(data$mF)) { mlF <- log(data$mF) }
-  else if (!is.null(parameters$mF)) { mlF <- log(parameters$mF) }
-  else { mlF <- array(-3, dim = c(nft, nfa)) }
+  if (!is.null(data$mF)) { lmF <- log(data$mF) }
+  else if (!is.null(parameters$mF)) { lmF <- log(parameters$mF) }
+  else { lmF <- array(-3, dim = c(nft, nfa)) }
   # Vector log fishing selectivity and tag reporting bias
-  if (!is.null(parameters$vB)) { vlB <- log(parameters$vB) }
-  else { vlB <- numeric(length = ng) }
+  if (!is.null(parameters$vB)) { lvB <- log(parameters$vB) }
+  else { lvB <- numeric(length = ng) }
   # Scalar log tag loss rate
-  if (!is.null(data$sH)) { slH <- log(data$sH) }
-  if (!is.null(parameters$sH)) { slH <- log(parameters$sH) }
-  else { slH <- -3L }
+  if (!is.null(data$sH)) { lsH <- log(data$sH) }
+  if (!is.null(parameters$sH)) { lsH <- log(parameters$sH) }
+  else { lsH <- -3L }
   # Scalar log initial tag loss rate
-  if (!is.null(data$sC)) { slC <- log(data$sC) }
-  if (!is.null(parameters$sC)) { slC <- log(parameters$sC) }
-  else { slC <- -2L }
+  if (!is.null(data$sC)) { lsC <- log(data$sC) }
+  if (!is.null(parameters$sC)) { lsC <- log(parameters$sC) }
+  else { lsC <- -2L }
   # Scalar log natural mortality
-  if (!is.null(data$sM)) { slM <- log(data$sM) }
-  if (!is.null(parameters$sM)) { slM <- log(parameters$sM) }
-  else { slM <- -2L }
+  if (!is.null(data$sM)) { lsM <- log(data$sM) }
+  if (!is.null(parameters$sM)) { lsM <- log(parameters$sM) }
+  else { lsM <- -2L }
   # Scalar log negative binomial dispersal
-  slD <- 0L
+  lsD <- 0L
 
   #---------------- Check arguments for tmb_parameters ------------------------#
 
@@ -350,12 +408,12 @@ mmmFit <- function(data,
   cat("creating tmb_parameters \n")
   tmb_parameters <- list(
     aP = aP, # Array: movement parameters
-    mlF = mlF, # Matrix: log fishing mortality rates
-    vlB = vlB, # Matrix: log fishery selectivity and tag reporting bias
-    slH = slH, # Scalar: log tag loss rate
-    slC = slC, # Scalar: log initial tag loss rate
-    slM = slM, # Scalar: natural mortality
-    slD = slD # Scalar: negative binomial dispersion
+    lmF = lmF, # Matrix: log fishing mortality rates
+    lvB = lvB, # Matrix: log fishery selectivity and tag reporting bias
+    lsH = lsH, # Scalar: log tag loss rate
+    lsC = lsC, # Scalar: log initial tag loss rate
+    lsM = lsM, # Scalar: natural mortality
+    lsD = lsD # Scalar: negative binomial dispersion
   )
 
   #---------------- Create tmb_random -----------------------------------------#
@@ -369,17 +427,17 @@ mmmFit <- function(data,
   cat("creating tmb_map \n")
   tmb_map <- list()
   # Default
-  if (!is.null(data$mF)) { tmb_map <- c(tmb_map, mlF = NA) }
-  if (!is.null(data$sH)) { tmb_map <- c(tmb_map, slH = NA) }
-  if (!is.null(data$sC)) { tmb_map <- c(tmb_map, slC = NA) }
-  if (!is.null(data$sM)) { tmb_map <- c(tmb_map, slM = NA) }
-  if (error_family == 0) { tmb_map <- c(tmb_map, slD = NA)}
+  if (!is.null(data$mF)) { tmb_map <- c(tmb_map, lmF = NA) }
+  if (!is.null(data$sH)) { tmb_map <- c(tmb_map, lsH = NA) }
+  if (!is.null(data$sC)) { tmb_map <- c(tmb_map, lsC = NA) }
+  if (!is.null(data$sM)) { tmb_map <- c(tmb_map, lsM = NA) }
+  if (error_family == 0) { tmb_map <- c(tmb_map, lsD = NA)}
   # User defined
-  if (!is.null(map$mF)) { tmb_map$mlF <- map$mF }
-  if (!is.null(map$vB)) { tmb_map$vlB <- map$vB }
-  if (!is.null(map$sH)) { tmb_map$slH <- map$sH }
-  if (!is.null(map$sC)) { tmb_map$slC <- map$sC }
-  if (!is.null(map$sM)) { tmb_map$slM <- map$sM }
+  if (!is.null(map$mF)) { tmb_map$lmF <- map$mF }
+  if (!is.null(map$vB)) { tmb_map$lvB <- map$vB }
+  if (!is.null(map$sH)) { tmb_map$lsH <- map$sH }
+  if (!is.null(map$sC)) { tmb_map$lsC <- map$sC }
+  if (!is.null(map$sM)) { tmb_map$lsM <- map$sM }
 
   #---------------- Set the number of OpenMP cores ----------------------------#
 
@@ -897,6 +955,9 @@ mmmTMB <- function (released_3d, # Data
 #' Settings for \code{mmmFit()}
 #'
 #' @param error_family Character. One of \code{"nb1"} or \code{"poisson"}
+#' @param span_liberty Integer. Min and max time steps at liberty before
+#'   recapture. The initial time at liberty \code{span_liberty[1]} should
+#'   agree in duration with \code{days_liberty} from \code{mmmTags()}.
 #' @param time_varying Logical. Should movement rates vary through time?
 #' @param time_process Character. One of \code{"none"} or \code{"rw"}
 #' @param cycle_length Integer. Cycle length or \code{0} for no cycle.
@@ -917,6 +978,7 @@ mmmTMB <- function (released_3d, # Data
 #' @examples
 #'
 mmmSet <- function (error_family = c("nb1", "poisson"),
+                    span_liberty = c(1, Inf),
                     time_varying = 0,
                     time_process = c("none", "rw"),
                     cycle_length = 0,
@@ -931,6 +993,7 @@ mmmSet <- function (error_family = c("nb1", "poisson"),
 
   structure(list(
     error_family = error_family[1],
+    span_liberty = span_liberty[1:2],
     time_varying = time_varying,
     time_process = time_process[1],
     cycle_length = cycle_length,
