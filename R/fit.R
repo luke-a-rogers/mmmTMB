@@ -372,15 +372,18 @@ mmmFit <- function(data,
 
   #---------------- Check arguments for tmb_parameters ------------------------#
 
-  # TODO: Check that aP matches npt, np, ng
-  # TODO: Check that mF matches dimensions if present
-
-
-
+  # Movement parameter array
+  checkmate::assert_array(aP, mode = "double", any.missing = FALSE, d = 3)
+  checkmate::assert_true(dim(aP)[1] == npt, na.ok = FALSE)
+  checkmate::assert_true(dim(aP)[2] == np, na.ok = FALSE)
+  checkmate::assert_true(dim(aP)[3] == ng, na.ok = FALSE)
+  # Fishing rate matrix
+  checkmate::assert_matrix(mF, mode = "double", any.missing = FALSE)
+  checkmate::assert_true(dim(mF)[1] == nft, na.ok = FALSE)
+  checkmate::assert_true(dim(mF)[2] == nfa, na.ok = FALSE)
 
   #---------------- Create tmb_data -------------------------------------------#
 
-  # TODO: add steps_liberty from somewhere
   cat("creating tmb_data \n")
   tmb_data <- list(
     mT = mT,
@@ -389,6 +392,9 @@ mmmFit <- function(data,
     mL = mL,
     mW = mW,
     error_family = error_family,
+    span_liberty = span_liberty,
+    time_varying = time_varying,
+    time_process = time_process,
     # Index limits
     np = np, # Index limits: number of parameters
     nt = nt, # Index limits: number of time steps
@@ -397,10 +403,18 @@ mmmFit <- function(data,
     npt = npt, # Secondary index limits: number of parameter time steps
     nft = nft, # Secondary index limits: number of fishing rate time steps
     nfa = nfa, # Secondary index limits: number of fishing rate areas
+    nlt = nlt, # Secondary index limits: number of reporting rate time steps
+    nla = nla, # Secondary index limits: number of reporting rate areas
+    nwt = nwt, # Secondary index limits: number of fish rate weighting steps
+    nwa = nwa, # Secondary index limits: number of fish rate weighting areas
     # Index vectors
     vpt = vpt, # Index vector: time step for movement parameters
     vft = vft, # Index vector: time step for fishing rate
-    vfa = vfa # Index vector: area for fishing rate
+    vfa = vfa, # Index vector: area for fishing rate
+    vlt = vlt, # Index vector: time step for tag reporting rate
+    vla = vla, # Index vector: area for tag reporting rate
+    vwt = vwt, # Index vector: time step for fishing rate weighting
+    vwa = vwa # Index vector: area for fishing rate weighting
   )
 
   #---------------- Create tmb_parameters -------------------------------------#
