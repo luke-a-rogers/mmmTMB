@@ -206,7 +206,7 @@ mmmTags <- function (x,
     steps_liberty <- round(exp(log(days_liberty) - log(365.25)))
     cat(paste("days at liberty:", days_liberty), "\n")
     cat(paste("steps at liberty:", steps_liberty[1]), "\n")
-    cat("use caution if days and steps at liberty disagree in duration. \n")
+    cat("use caution if days and steps (years) at liberty disagree \n")
   } else if (time_step == "month") {
     x <- x %>% dplyr::mutate(
       release_step = as.integer(
@@ -221,9 +221,9 @@ mmmTags <- function (x,
           lubridate::month(recover_date) - lubridate::month(date_lims[1])))
     # Convert liberty
     steps_liberty <- round(exp(log(days_liberty) - log(30)))
-    cat(paste("days at liberty:", days_liberty[1], days_liberty[2]), "\n")
-    cat(paste("steps at liberty:", steps_liberty[1], steps_liberty[2]), "\n")
-    cat("use caution if days and steps (years) at liberty disagree.\n")
+    cat(paste("days at liberty:", days_liberty[1], "\n"))
+    cat(paste("steps at liberty:", steps_liberty[1], "\n"))
+    cat("use caution if days and steps (months) at liberty disagree.\n")
   } else if (time_step == "day") {
     x <- x %>% dplyr::mutate(
       release_step = as.integer(release_date - date_lims[1]))
@@ -290,6 +290,94 @@ mmmTags <- function (x,
     days_liberty = days_liberty,
     init_liberty = steps_liberty),
     class = "mmmTags"))
+}
+
+#' Prepare Rate Data
+#'
+#' @param x A data frame of named columns. See details.
+#' @param cols A list of named character elements. See details.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' year <- rep(2010:2016, 3)
+#' area <- rep(c(1,2,3), each = 7)
+#' rate <- rep(seq(0.1, 0.5, length.out = 7), 3)
+#' x <- data.frame(year = year, area = area, rate = rate)
+#' r1 <- mmmRates(x)
+#'
+mmmRates <- function (x,
+                      cols = NULL,
+                      year_lims = NULL,
+                      area_names = NULL,
+                      replicates = 1,
+                      instantaneous = FALSE) {
+
+  #--------------- Check arguments --------------------------------------------#
+
+  # TODO: Check all arguments
+  checkmate::assert_data_frame(x)
+  checkmate::assert_list(cols, unique = TRUE)
+  checkmate::assert_integerish(year_lims, len = 2, lower = 0, null.ok = TRUE)
+  checkmate::assert_integerish(year_lims, any.missing = FALSE, null.ok = TRUE)
+  checkmate::assert_list(area_names, null.ok = TRUE)
+  checkmate::assert_integerish(replicates, lower = 1, len = 1, null.ok = FALSE)
+  checkmate::assert_logical(instantaneous, len = 1, null.ok = FALSE)
+
+  #--------------- Check required columns -------------------------------------#
+
+  checkmate::assert_true(is.element(cols$year, colnames(x)))
+  checkmate::assert_true(is.element(cols$area, colnames(x)))
+  checkmate::assert_true(is.element(cols$rate, colnames(x)))
+
+  #--------------- Rename columns ---------------------------------------------#
+
+  colnames(x)[which(colnames(x) == cols$year)] <- "year"
+  colnames(x)[which(colnames(x) == cols$area)] <- "area"
+  colnames(x)[which(colnames(x) == cols$rate)] <- "rate"
+
+  #--------------- Define x ---------------------------------------------------#
+
+  colnames_x <- c("year", "area", "rate")
+  x <- x[, colnames_x]
+
+  #--------------- Define year limits -----------------------------------------#
+
+  if (is.null(year_lims)) { year_lims <- c(min(x$years), max(x$years)) }
+
+  #--------------- Convert years to index -------------------------------------#
+
+  x <- dplyr::filter(x, year >= year_lims[1], year <= year_lims[2]) %>%
+    dplyr::mutate(year = year - year_lims[1] + 1L)
+
+  #--------------- Check years are sequential ---------------------------------#
+
+  # TODO: Check years are sequential
+
+  #--------------- Convert areas to integers ----------------------------------#
+
+  if (is.character(x$area)) {
+    x <- dplyr::mutate(x, area = mmmGroup(area, area_names) + 1L)
+  }
+
+  #--------------- Optionally replicate rows ----------------------------------#
+
+  x <- dplyr::slice(x, rep(dplyr::row_number(), each = replicates)) %>%
+    dplyr::group_by(area) %>%
+    dplyr::mutate(step = dplyr::row_number()) %>%
+    dplyr::ungroup()
+
+  #--------------- Optionally convert rate ------------------------------------#
+
+  if (instantaneous) { x$rate <- x$rate / replicates }
+
+  #--------------- Convert to step by area matrix -----------------------------#
+
+  x <- tidyr::pivot_wider(x, names_from = area, values_from = rate) %>%
+    dplyr::select(-year) %>%
+    as.matrix()
+  return(x)
 }
 
 #' Map Values to Groups
