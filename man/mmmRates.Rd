@@ -4,19 +4,20 @@
 \alias{mmmRates}
 \title{Prepare Rate Data}
 \usage{
-mmmRates(
-  x,
-  cols = NULL,
-  year_lims = NULL,
-  area_names = NULL,
-  replicates = 1,
-  instantaneous = FALSE
-)
+mmmRates(x, cols = NULL, lims = NULL, areas = NULL, reps = 1, inst = FALSE)
 }
 \arguments{
 \item{x}{A data frame of named columns. See details.}
 
 \item{cols}{A list of named character elements. See details.}
+
+\item{lims}{An integer vector of length 2.}
+
+\item{areas}{A character vector of area names.}
+
+\item{reps}{An integer. Number of time steps per row.}
+
+\item{inst}{Logical. Is the rate an instantaneous rate?}
 }
 \value{
 
@@ -25,10 +26,10 @@ mmmRates(
 Prepare Rate Data
 }
 \examples{
-year <- rep(2010:2016, 3)
+date <- rep(2010:2016, 3)
 area <- rep(c(1,2,3), each = 7)
 rate <- rep(seq(0.1, 0.5, length.out = 7), 3)
-x <- data.frame(year = year, area = area, rate = rate)
+x <- data.frame(date = date, area = area, rate = rate)
 r1 <- mmmRates(x)
 
 }

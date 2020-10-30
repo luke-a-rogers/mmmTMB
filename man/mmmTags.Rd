@@ -42,17 +42,17 @@ TBD
 \examples{
 
 x <- data.frame(
-  Release_Date = c("2010-06-01", "2015-04-01", "2020-06-01"),
-  Release_Area = c(1,1,1),
-  Release_Group = c("F","F","M"),
-  ID = c("TAG001", "TAG002", "TAG003"))
+  Release_Date = c("2010-06-01", "2015-04-01", "2018-06-01", "2020-06-01"),
+  Release_Area = c(1,1,1,1),
+  Release_Group = c("F", "F", "F", "M"),
+  ID = c("TAG001", "TAG002", "TAG003", "TAG004"))
 y <- data.frame(
-  Release_Date = c("2010-06-01", "2020-06-01"),
-  Release_Area = c(1,1),
-  Recover_Date = c("2013-08-01", "2020-08-01"),
-  Recover_Area = c(1,1),
-  Release_Group = c("F", "M"),
-  ID = c("TAG001", "TAG003"))
+  Release_Date = c("2010-06-01", "2018-06-01", "2020-06-01"),
+  Release_Area = c(1,1,1),
+  Recover_Date = c("2013-08-01", "2020-01-01", "2020-08-01"),
+  Recover_Area = c(1,2,1),
+  Release_Group = c("F", "F", "M"),
+  ID = c("TAG001", "TAG003", "TAG004"))
 cols <- list(
   release_date = "Release_Date",
   release_area = "Release_Area",
