@@ -20,17 +20,17 @@
 #' @examples
 #'
 #' x <- data.frame(
-#'   Release_Date = c("2010-06-01", "2015-04-01", "2020-06-01"),
-#'   Release_Area = c(1,1,1),
-#'   Release_Group = c("F","F","M"),
-#'   ID = c("TAG001", "TAG002", "TAG003"))
+#'   Release_Date = c("2010-06-01", "2015-04-01", "2018-06-01", "2020-06-01"),
+#'   Release_Area = c(1,1,1,1),
+#'   Release_Group = c("F", "F", "F", "M"),
+#'   ID = c("TAG001", "TAG002", "TAG003", "TAG004"))
 #' y <- data.frame(
-#'   Release_Date = c("2010-06-01", "2020-06-01"),
-#'   Release_Area = c(1,1),
-#'   Recover_Date = c("2013-08-01", "2020-08-01"),
-#'   Recover_Area = c(1,1),
-#'   Release_Group = c("F", "M"),
-#'   ID = c("TAG001", "TAG003"))
+#'   Release_Date = c("2010-06-01", "2018-06-01", "2020-06-01"),
+#'   Release_Area = c(1,1,1),
+#'   Recover_Date = c("2013-08-01", "2020-01-01", "2020-08-01"),
+#'   Recover_Area = c(1,2,1),
+#'   Release_Group = c("F", "F", "M"),
+#'   ID = c("TAG001", "TAG003", "TAG004"))
 #' cols <- list(
 #'   release_date = "Release_Date",
 #'   release_area = "Release_Area",
@@ -63,14 +63,19 @@ mmmTags <- function (x,
   checkmate::assert_list(cols, unique = TRUE)
   checkmate::assert_list(groups, unique = TRUE, null.ok = TRUE)
   checkmate::assert_character(time_step, len = 1, null.ok = TRUE)
-  checkmate::assert_integerish(days_liberty, lower = 0, len = 1, null.ok = TRUE)
+  checkmate::assert_numeric(days_liberty, lower = 0, len = 1, null.ok = TRUE)
 
   #--------------- Check time step --------------------------------------------#
 
-  if (is.null(time_step)) { time_step <- "year" }
-  else if (is.na(time_step)) { time_step <- "year" }
-  else if (is.element(time_step, c("year", "month", "day"))) { }
-  else { time_step <- "year" }
+  if (is.null(time_step)) {
+    time_step <- "year"
+  } else if (is.na(time_step)) {
+    time_step <- "year"
+  } else if (is.element(time_step, c("year", "month", "day"))) {
+    time_step <- time_step
+  } else {
+    time_step <- "year"
+  }
 
   #--------------- Set default values -----------------------------------------#
 
@@ -191,9 +196,43 @@ mmmTags <- function (x,
 
   y <- dplyr::inner_join(x, y, by = colnames_x)[, colnames_y]
 
+  #--------------- Index areas from zero --------------------------------------#
+
+  x <- dplyr::mutate(x, release_area = as.integer(release_area - 1L))
+  y <- dplyr::mutate(y, release_area = as.integer(release_area - 1L),
+                     recover_area = as.integer(recover_area - 1L))
+
+  #--------------- Convert group to integer -----------------------------------#
+
+  x <- dplyr::mutate(x, group_index = mmmGroup(group, groups))
+  y <- dplyr::mutate(y, group_index = mmmGroup(group, groups))
+
+  #--------------- Create mW --------------------------------------------------#
+
+  if (time_step == "year") {
+    na <- max(c(x$release_area, y$recover_area)) + 1L
+    mW <- array(1L, dim = c(1, na))
+  } else if (time_step == "month") {
+    mW <- dplyr::mutate(y, month = lubridate::month(y$recover_date)) %>%
+      dplyr::select(month, recover_area) %>%
+      dplyr::group_by(month, recover_area) %>%
+      dplyr::mutate(count = dplyr::n()) %>%
+      dplyr::ungroup() %>%
+      dplyr::distinct(.keep_all = TRUE) %>%
+      dplyr::arrange(recover_area) %>%
+      tidyr::pivot_wider(names_from = recover_area, values_from = count) %>%
+      dplyr::arrange(month) %>%
+      dplyr::select(-month) %>%
+      as.matrix()
+    if (typeof(mW) != "integer") { mode(mW) <- "integer" }
+  } else if (time_step == "day") {
+    cat("mW not implemented for time_step == 'day'")
+    mW <- array(1L, dim = c(1, na))
+  }
+
   #--------------- Convert date to time step ----------------------------------#
 
-  if (is.null(time_step) || time_step == "year") {
+  if (time_step == "year") {
     x <- x %>% dplyr::mutate(
       release_step = as.integer(
         lubridate::year(release_date) - lubridate::year(date_lims[1])))
@@ -236,17 +275,6 @@ mmmTags <- function (x,
     stop("time_step must be one of 'year', 'month', or 'day'.")
   }
 
-  #--------------- Index areas from zero --------------------------------------#
-
-  x <- dplyr::mutate(x, release_area = as.integer(release_area - 1L))
-  y <- dplyr::mutate(y, release_area = as.integer(release_area - 1L),
-                     recover_area = as.integer(recover_area - 1L))
-
-  #--------------- Convert group to integer -----------------------------------#
-
-  x <- dplyr::mutate(x, group_index = mmmGroup(group, groups))
-  y <- dplyr::mutate(y, group_index = mmmGroup(group, groups))
-
   #--------------- Drop NA values ---------------------------------------------#
 
   x <- tidyr::drop_na(x)
@@ -266,7 +294,7 @@ mmmTags <- function (x,
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
     as.matrix()
-  if (typeof(mT) != "integer") {mode(mT) <- "integer"}
+  if (typeof(mT) != "integer") { mode(mT) <- "integer" }
 
   #--------------- Create mR --------------------------------------------------#
 
@@ -284,6 +312,7 @@ mmmTags <- function (x,
   return(structure(list(
     mT = mT,
     mR = mR,
+    mW = mW,
     groups = groups,
     time_step = time_step,
     date_lims = date_lims,
@@ -296,86 +325,98 @@ mmmTags <- function (x,
 #'
 #' @param x A data frame of named columns. See details.
 #' @param cols A list of named character elements. See details.
+#' @param lims An integer vector of length 2.
+#' @param areas A character vector of area names.
+#' @param reps An integer. Number of time steps per row.
+#' @param inst Logical. Is the rate an instantaneous rate?
 #'
 #' @return
 #' @export
 #'
 #' @examples
-#' year <- rep(2010:2016, 3)
+#' date <- rep(2010:2016, 3)
 #' area <- rep(c(1,2,3), each = 7)
 #' rate <- rep(seq(0.1, 0.5, length.out = 7), 3)
-#' x <- data.frame(year = year, area = area, rate = rate)
+#' x <- data.frame(date = date, area = area, rate = rate)
 #' r1 <- mmmRates(x)
 #'
 mmmRates <- function (x,
                       cols = NULL,
-                      year_lims = NULL,
-                      area_names = NULL,
-                      replicates = 1,
-                      instantaneous = FALSE) {
+                      lims = NULL,
+                      areas = NULL,
+                      reps = 1,
+                      inst = FALSE) {
 
   #--------------- Check arguments --------------------------------------------#
 
   # TODO: Check all arguments
   checkmate::assert_data_frame(x)
-  checkmate::assert_list(cols, unique = TRUE)
-  checkmate::assert_integerish(year_lims, len = 2, lower = 0, null.ok = TRUE)
-  checkmate::assert_integerish(year_lims, any.missing = FALSE, null.ok = TRUE)
-  checkmate::assert_list(area_names, null.ok = TRUE)
-  checkmate::assert_integerish(replicates, lower = 1, len = 1, null.ok = FALSE)
-  checkmate::assert_logical(instantaneous, len = 1, null.ok = FALSE)
+  checkmate::assert_list(cols, unique = TRUE, null.ok = TRUE)
+  checkmate::assert_integerish(lims, len = 2, lower = 0, null.ok = TRUE)
+  checkmate::assert_integerish(lims, any.missing = FALSE, null.ok = TRUE)
+  checkmate::assert_list(areas, null.ok = TRUE)
+  checkmate::assert_integerish(reps, lower = 1, len = 1, null.ok = FALSE)
+  checkmate::assert_logical(inst, len = 1, null.ok = FALSE)
+
+  #--------------- Set default cols -------------------------------------------#
+
+  if (is.null(cols)) {
+    cols <- list(date = "date", area = "area", rate = "rate")
+  }
 
   #--------------- Check required columns -------------------------------------#
 
-  checkmate::assert_true(is.element(cols$year, colnames(x)))
+  checkmate::assert_true(is.element(cols$date, colnames(x)))
   checkmate::assert_true(is.element(cols$area, colnames(x)))
   checkmate::assert_true(is.element(cols$rate, colnames(x)))
 
   #--------------- Rename columns ---------------------------------------------#
 
-  colnames(x)[which(colnames(x) == cols$year)] <- "year"
+  colnames(x)[which(colnames(x) == cols$date)] <- "date"
   colnames(x)[which(colnames(x) == cols$area)] <- "area"
   colnames(x)[which(colnames(x) == cols$rate)] <- "rate"
 
   #--------------- Define x ---------------------------------------------------#
 
-  colnames_x <- c("year", "area", "rate")
+  colnames_x <- c("date", "area", "rate")
   x <- x[, colnames_x]
 
-  #--------------- Define year limits -----------------------------------------#
+  #--------------- Define date limits -----------------------------------------#
 
-  if (is.null(year_lims)) { year_lims <- c(min(x$years), max(x$years)) }
+  if (is.null(lims)) { lims <- c(min(x$date), max(x$date)) }
 
-  #--------------- Convert years to index -------------------------------------#
+  #--------------- Convert dates to index -------------------------------------#
 
-  x <- dplyr::filter(x, year >= year_lims[1], year <= year_lims[2]) %>%
-    dplyr::mutate(year = year - year_lims[1] + 1L)
+  x <- dplyr::filter(x, date >= lims[1], date <= lims[2]) %>%
+    dplyr::mutate(date = date - lims[1] + 1L)
 
-  #--------------- Check years are sequential ---------------------------------#
+  #--------------- Check dates are sequential ---------------------------------#
 
-  # TODO: Check years are sequential
+  # TODO: Check dates are sequential
 
   #--------------- Convert areas to integers ----------------------------------#
 
   if (is.character(x$area)) {
-    x <- dplyr::mutate(x, area = mmmGroup(area, area_names) + 1L)
+    x <- dplyr::mutate(x, area = mmmGroup(area, areas) + 1L)
   }
 
   #--------------- Optionally replicate rows ----------------------------------#
 
-  x <- dplyr::slice(x, rep(dplyr::row_number(), each = replicates)) %>%
+  x <- dplyr::slice(x, rep(dplyr::row_number(), each = reps)) %>%
     dplyr::group_by(area) %>%
     dplyr::mutate(step = dplyr::row_number()) %>%
     dplyr::ungroup()
 
   #--------------- Optionally convert rate ------------------------------------#
 
-  if (instantaneous) { x$rate <- x$rate / replicates }
+  if (inst) { x$rate <- x$rate / reps }
 
   #--------------- Convert to step by area matrix -----------------------------#
 
-  x <- tidyr::pivot_wider(x, names_from = area, values_from = rate) %>%
-    dplyr::select(-year) %>%
+  x <- dplyr::arrange(x, area) %>%
+    tidyr::pivot_wider(names_from = area, values_from = rate) %>%
+    dplyr::arrange(step) %>%
+    dplyr::select(-date, -step) %>%
     as.matrix()
   return(x)
 }
