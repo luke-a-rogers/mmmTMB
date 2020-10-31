@@ -282,10 +282,13 @@ mmmTags <- function (x,
 
   #--------------- Select columns ---------------------------------------------#
 
-  x <- dplyr::select(x, release_step, release_area, group_index)
-  y <- dplyr::select(y, release_step, release_area, recover_step, recover_area,
-                     group_index)
+  # x <- dplyr::select(x, release_step, release_area, group_index)
+  # y <- dplyr::select(y, release_step, release_area, recover_step, recover_area,
+  #                    group_index)
 
+  x <- dplyr::select(x, group_index, release_area, release_step)
+  y <- dplyr::select(y, recover_area, recover_step, group_index,
+                     release_area, release_step)
 
   #--------------- Create mT --------------------------------------------------#
 

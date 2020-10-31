@@ -53,6 +53,8 @@ mmmFit <- function(data,
                    settings = mmmSet(),
                    control = mmmControl()) {
 
+  # TODO: Convert mI to transpose
+
   #---------------- Start the clock -------------------------------------------#
 
   tictoc::tic("mmmFit")
@@ -388,7 +390,7 @@ mmmFit <- function(data,
   tmb_data <- list(
     mT = mT,
     mR = mR,
-    mI = mI,
+    mI = t(mI),
     mL = mL,
     mW = mW,
     error_family = error_family,
@@ -423,10 +425,10 @@ mmmFit <- function(data,
   tmb_parameters <- list(
     aP = aP, # Array: movement parameters
     lmF = lmF, # Matrix: log fishing mortality rates
-    lvB = lvB, # Matrix: log fishery selectivity and tag reporting bias
+    lvB = lvB, # Vector: log fishery selectivity and tag reporting bias
+    lsM = lsM, # Scalar: log natural mortality
     lsH = lsH, # Scalar: log tag loss rate
     lsC = lsC, # Scalar: log initial tag loss rate
-    lsM = lsM, # Scalar: natural mortality
     lsD = lsD # Scalar: negative binomial dispersion
   )
 
@@ -537,12 +539,62 @@ mmmFit <- function(data,
 
   tictoc::tic("results")
   cat("computing results")
-  # TODO
+  # TODO: Update results
   # Use result_steps here
 
+  #---------------- Create movement probability results -----------------------#
 
+  tictoc::tic("computing movement estimates and std errs")
+  pars <- subset_by_name(model$par, "movement_parameters_3d")
+  if (time_process == 0) {
+    covs <- subset_by_name(sd_report$cov.fixed, "movement_parameters_3d")
+  } else {
+    # warning("Parameters are a random effect: Figure out where to access covs")
+    covs <- subset_by_name(sd_report$cov.fixed, "movement_parameters_3d")
+  }
+  mpr_df <- create_movement_probability_results(
+    pars = pars,
+    covs = covs,
+    dims = c(nv, np, nt, na, ng),
+    tp_2d = template_2d,
+    result_units = result_units,
+    n_draws = 1000)
+  tictoc::toc()
 
+  #---------------- Create natural mortality results --------------------------#
 
+  nmr_mat <- summary(sd_report)["natural_mortality_results", , drop = FALSE]
+  rownames(nmr_mat) <- NULL
+  colnames(nmr_mat) <- c("Estimate", "SE")
+  nmr_df <- as.data.frame(nmr_mat)
+
+  #---------------- Create capture bias results -------------------------------#
+
+  cbr_ind <- which(rownames(summary(sd_report)) == "capture_bias_2d")
+  cbr_mat <- matrix(0, nrow = na * ng, ncol = 4)
+  cbr_mat[, 1] <- rep(seq_len(ng), each = na)
+  cbr_mat[, 2] <- rep(seq_len(na), ng)
+  cbr_mat[, 3:4] <- summary(sd_report)[cbr_ind, ]
+  colnames(cbr_mat) <- c("Class", "Area", "Estimate", "SE")
+  cbr_df <- as.data.frame(cbr_mat)
+
+  #---------------- Create dispersion results ---------------------------------#
+
+  dsp_mat <- summary(sd_report)["dispersion", , drop = FALSE]
+  rownames(dsp_mat) <- NULL
+  colnames(dsp_mat) <- c("Estimate", "SE")
+  dsp_df <- as.data.frame(dsp_mat)
+
+  #---------------- Create results list ---------------------------------------#
+
+  results_list <- list(movement_probability_results = mpr_df,
+                       natural_mortality_results = nmr_df,
+                       capture_bias = cbr_df,
+                       dispersion = dsp_df)
+
+  tictoc::toc()
+
+  #----------------------------------------------------------------------------#
 
   tictoc::toc()
 
@@ -550,7 +602,7 @@ mmmFit <- function(data,
 
   tictoc::toc()
 
-  #---------------- Return an mmmTMB object -----------------------------------#
+  #---------------- Return an mmmFit object -----------------------------------#
 
   cat("\nreturning mmmTMB object\n")
   structure(list(
