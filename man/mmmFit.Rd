@@ -54,6 +54,7 @@ The list argument \code{data} may optionally contain
 in which the time step is given by the row and the area is
 given by the column. Defaults to ones (full reporting).}
 \item{mW}
+\item{mF}
 }
 }
 \examples{
