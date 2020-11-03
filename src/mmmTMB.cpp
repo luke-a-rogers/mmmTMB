@@ -3,11 +3,11 @@
 // ---------------- Methods called by the model --------------------------------
 
 template <class Type>
-array<Type> create_aK(array<Type> a, matrix<int> m) {
+array<Type> create_aK(array<Type> ta, matrix<int> tm) {
   // Initialize values
-  int na = a.dim(0);
-  int npt = a.dim(1);
-  int ng = a.dim(2);
+  int na = tm.rows(); // Matrix tm has rows = na, and cols = na
+  int npt = ta.dim(1); //  Array ta has dim = c(np, npt, ng)
+  int ng = ta.dim(2);
   int cp_num; // Current parameter in the numerator (?)
   int cp_den; // Current parameter in the denominator (?)
   Type k_sum; // Probability sum
@@ -25,8 +25,8 @@ array<Type> create_aK(array<Type> a, matrix<int> m) {
         // Set the denominator sum to zero for this row
         d_sum = 0;
         for (int ca = 0; ca < na; ca++) {
-          if (m(ca, pa) != 0) {
-            d_sum += exp(a(cp_den, cpt, mg));
+          if (tm(ca, pa) != 0) {
+            d_sum += exp(ta(cp_den, cpt, mg));
             cp_den +=1;
           }
         }
@@ -34,9 +34,9 @@ array<Type> create_aK(array<Type> a, matrix<int> m) {
         k_sum = Type(0);
         // Compute the probability for ca != pa
         for (int ca = 0; ca < na; ca++) {
-          if (m(ca, pa) != 0) {
-            k(ca, pa, cpt, mg) = exp(a(cp_num, cpt, mg)) / (Type(1) + d_sum);
-            k_sum += k(ca, pa, cpt, mg);
+          if (tm(ca, pa) != 0) {
+            k(pa, ca, cpt, mg) = exp(ta(cp_num, cpt, mg)) / (Type(1) + d_sum);
+            k_sum += k(pa, ca, cpt, mg);
             cp_num += 1;
           }
         }
@@ -67,12 +67,11 @@ Type objective_function<Type>::operator() ()
 {
   // -------------- Data -------------------------------------------------------
 
-  DATA_IMATRIX(mT); // Tag release integer matrix
-  DATA_IMATRIX(mR); // Tag recover integer matrix
-  DATA_IMATRIX(mI); // Area index integer matrix
-  DATA_MATRIX(mL); // Fishing mortality rate bias matrix
-  DATA_MATRIX(mW); // Fishing mortality rate weights matrix
-  DATA_SCALAR(sA); // Proportion of tags still attached following release
+  DATA_IMATRIX(tmT); // Tag release integer matrix (transpose)
+  DATA_IMATRIX(tmR); // Tag recover integer matrix (transpose)
+  DATA_IMATRIX(tmI); // Area index integer matrix (transpose)
+  DATA_MATRIX(tmL); // Fishing mortality rate bias matrix (transpose)
+  DATA_MATRIX(tmW); // Fishing mortality rate weights matrix (transpose)
   // Settings
   DATA_INTEGER(error_family); // Error family
   DATA_IVECTOR(span_liberty); // Min and max steps at liberty
@@ -101,13 +100,13 @@ Type objective_function<Type>::operator() ()
 
   // -------------- Parameters -------------------------------------------------
 
-  PARAMETER_ARRAY(aP); // Movement parameters dim = c(npt, np, ng)
-  PARAMETER_ARRAY(lmF); // Log fishing mortality rates dim = c(nft, nfa)
-  PARAMETER_VECTOR(lvB); // Log fishing bias length = ng
-  PARAMETER(lsM); // Log natural mortality
-  PARAMETER(lsH); // Log tag loss rate
-  PARAMETER(lsC); // Log initial tag loss rate
-  PARAMETER(lsD); // Log negative binomial dispersion
+  PARAMETER_ARRAY(taP); // Movement parameters dim = c(np, npt, ng)
+  PARAMETER_ARRAY(logit_exp_neg_tmF); // Fishing mortality
+  PARAMETER(logit_exp_neg_sM); // Natural mortality
+  PARAMETER(logit_exp_neg_sH); // Tag loss
+  PARAMETER(logit_sA); // 1 - Initial tag loss
+  PARAMETER_VECTOR(log_vB); // Fishing bias by group
+  PARAMETER(log_sD); // Negative binomial dispersion
 
   // -------------- Initialize the nll -----------------------------------------
 
@@ -123,7 +122,7 @@ Type objective_function<Type>::operator() ()
   array<Type> aK(na, na, npt, ng); // Movement rates
   array<Type> aS(na, nt, ng); // Survival rates
   array<Type> aRhat(na, nt, ng, na, nt); // Tag recoveries (predicted)
-  matrix<Type> mF(nfa, nft); // Fishing mortality rates
+  matrix<Type> tmF(nfa, nft); // Fishing mortality rates
   vector<Type> vB(ng); // Fishing mortality bias
 
   // -------------- Initialize arrays ------------------------------------------
@@ -136,32 +135,38 @@ Type objective_function<Type>::operator() ()
 
   // -------------- Inverse transform parameters -------------------------------
 
-  mF = exp(lmF); // Fishing mortality rates
-  vB = exp(lvB); // Fishing bias
-  Type sM = exp(lsM); // Natural mortality
-  Type sH = exp(lsH); // Tag loss rate
-  Type sD = exp(lsD); // Negative binomial dispersion
+  // Fishing mortality
+  for (int ct = 0; ct < nt; ct++) {
+    for (int ca = 0; ca < na; ca++) {
+      tmF(vfa(ca), vft(ct)) = -log(invlogit(logit_exp_neg_tmF(vfa(ca), vft(ct))));
+    }
+  }
+  Type sM = -log(invlogit(logit_exp_neg_sM)); // Natural mortality
+  Type sH = -log(invlogit(logit_exp_neg_sH)); // Tag loss rate
+  Type sA = invlogit(logit_sA); // Tags attached after release (proportion)
+  vB = exp(log_vB); // Fishing bias
+  Type sD = exp(log_sD); // Negative binomial dispersion
 
   // -------------- Compute constants ------------------------------------------
 
-  int mTrows = mT.rows();
-  int mRrows = mR.rows();
+  int tmTcols = tmT.cols();
+  int tmRcols = tmR.cols();
 
   // -------------- Populate tag abundances with releases ----------------------
 
-  for (int i = 0; i < mTrows; i++) {
-    aN(mT(1, i), mT(2, i), mT(0, i), mT(1, i), mT(2, i)) = sA * mT(3, i);
+  for (int i = 0; i < tmTcols; i++) {
+    aN(tmT(1, i), tmT(0, i), tmT(2, i), tmT(1, i), tmT(0, i)) = sA * tmT(3, i);
   }
 
   // -------------- Populate tag recoveries ------------------------------------
 
-  for (int i = 0; i < mRrows; i++) {
-    aR(mR(0, i), mR(1, i), mR(2, i), mR(3, i), mR(4, i)) = mR(5, i);
+  for (int i = 0; i < tmRcols; i++) {
+    aR(tmR(4, i), tmR(3, i), tmR(2, i), tmR(1, i), tmR(0, i)) = tmR(5, i);
   }
 
   // -------------- Populate movement rates ------------------------------------
 
-  aK = create_aK(aP, mI);
+  aK = create_aK(taP, tmI);
 
   // -------------- Compute the random effects nll -----------------------------
 
@@ -172,8 +177,8 @@ Type objective_function<Type>::operator() ()
   for (int mg = 0; mg < ng; mg++) {
     for (int ct = 0; ct < nt; ct++) {
       for (int ca = 0; ca < na; ca++) {
-        aS(ca, ct, mg) = exp(-(vB(mg) * mF(vfa(ca), vft(ct)) *
-          mW(vwa(ca), vwt(ct)) + sM + sH));
+        aS(ca, ct, mg) = exp(-(vB(mg) * tmF(vfa(ca), vft(ct)) *
+          tmW(vwa(ca), vwt(ct)) + sM + sH));
       }
     }
   }
@@ -203,9 +208,9 @@ Type objective_function<Type>::operator() ()
                 for (int ra = 0; ra < na; ra++) {
                   // Populate the predicted recovery array
                   aRhat(ra, rt, mg, ma, mt) = aN(ra, rt, mg, ma, mt) *
-                    (Type(1) - exp(-vB(mg) * mF(vfa(ra), vft(rt)) *
-                    mW(vwa(ra), vwt(rt)))) *
-                    mL(vla(ra), vlt(rt));
+                    (Type(1) - exp(-vB(mg) * tmF(vfa(ra), vft(rt)) *
+                    tmW(vwa(ra), vwt(rt)))) *
+                    tmL(vla(ra), vlt(rt));
                   // Shelter error distribution from mean zero
                   if (aRhat(ra, rt, mg, ma, mt) > 0) {
                     // Calculate the joint negative log likelihood
@@ -222,7 +227,7 @@ Type objective_function<Type>::operator() ()
                       jnll += -dnbinom_robust(
                         aR(ra, rt, mg, ma, mt),
                         log(aRhat(ra, rt, mg, ma, mt)),
-                        log(aRhat(ra, rt, mg, ma, mt)) + lsD,
+                        log(aRhat(ra, rt, mg, ma, mt)) + log_sD,
                         true);
                       break;
                     default:
@@ -245,7 +250,7 @@ Type objective_function<Type>::operator() ()
 
   // ------------- Report ------------------------------------------------------
 
-  // REPORT(aP);
+  // REPORT(taP);
   // REPORT(aK);
 
   // ------------- Report simulation -------------------------------------------
