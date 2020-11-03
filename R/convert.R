@@ -1,3 +1,40 @@
+#' Logit (Log Odds Ratio)
+#'
+#' @param x Numeric between zero and one(inclusive)
+#'
+#' @return The log of the odds ratio
+#' @export
+#'
+#' @examples
+#'
+logit <- function (x) {
+  # Check arguments
+  checkmate::assert_numeric(x, lower = 0, upper = 1)
+  # Return logit(x)
+  return(log(x / (1 - x)))
+}
+
+#' Inverse Logit
+#'
+#' @param y Numeric
+#'
+#' @return The inverse of the log odds ratio
+#' @export
+#'
+#' @examples
+#'
+invlogit <- function (y) {
+  # Check arguments
+  checkmate::assert_numeric(y)
+  # Compute invlogit(y)
+  ans <- numeric(length = length(y))
+  ans[which(y == Inf)] <- 1
+  ans[which(y != Inf)] <- exp(y) / (1 + exp(y))
+  dim(ans) <- dim(y)
+  # Return invlogit(y)
+  return(ans)
+}
+
 #' Subset Numeric Vector or Matrix by Rowname, Colname, or Name
 #'
 #' @param x [numeric()] or [matrix()]
