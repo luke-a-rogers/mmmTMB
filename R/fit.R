@@ -36,6 +36,7 @@ NULL
 #'     in which the time step is given by the row and the area is
 #'     given by the column. Defaults to ones (full reporting).}
 #'   \item{mW}
+#'   \item{mF}
 #' }
 #'
 #'
@@ -304,26 +305,53 @@ mmmFit <- function(data,
 
   #---------------- Create fishing rate indexes -------------------------------#
 
-  # Set for fishing rate time step
-  if (fish_rate_by == "none" || fish_rate_by == "area") {
-    nft <- 1L
-    vft <- rep(0L, nt) # Index from zero for C++
-  } else {
-    if (block_length) {
-      nft <- ceiling(nt / block_length)
-      vft <- rep(seq_len(nft) - 1L, each = block_length)[seq_len(nt)]
-    } else {
-      nft <- nt
-      vft <- c(seq_len(nt) - 1L) # Index from zero for C++
+  if (!is.null(data$mF)) {
+    nft <- nrow(data$mF)
+    nfa <- ncol(data$mF)
+    vft <- rep(seq_len(nft) - 1L, each = ceiling(nt / nft))[seq_len(nt)]
+    vfa <- rep(seq_len(nfa) - 1L, each = ceiling(na / nfa))[seq_len(na)]
+    if (nt %% nft) {
+      cat("warning: nft does not divide nt evenly \n")
     }
-  }
-  # Set for fishing rate areas
-  if (fish_rate_by == "none" || fish_rate_by == "block") {
-    nfa <- 1L
-    vfa <- rep(0L, na) # Index from zero for C++
+    if (!is.element(nfa, c(1, na))) {
+      cat("warning: nfa must equal 1 or na \n")
+    }
+    cat("using mF from data and ignoring fish_rate_by in settings \n")
+  } else if (!is.null(parameters$mF)) {
+    nft <- nrow(parameters$mF)
+    nfa <- ncol(parameters$mF)
+    vft <- rep(seq_len(nft) - 1L, each = ceiling(nt / nft))[seq_len(nt)]
+    vfa <- rep(seq_len(nfa) - 1L, each = ceiling(na / nfa))[seq_len(na)]
+    if (nt %% nft) {
+      cat("warning: nft does not divide nt evenly \n")
+    }
+    if (!is.element(nfa, c(1, na))) {
+      cat("warning: nfa must equal 1 or na \n")
+    }
+    cat("initial mF from parameters; ignoring fish_rate_by in settings \n")
   } else {
-    nfa <- na
-    vfa <- c(seq_len(na) - 1L) # Index from zero for C++
+    # Set for fishing rate time step
+    if (is.element(fish_rate_by, c(0L, 1L))) { # None or area
+      nft <- 1L
+      vft <- rep(0L, nt) # Index from zero for C++
+    } else {
+      if (block_length) {
+        nft <- ceiling(nt / block_length)
+        vft <- rep(seq_len(nft) - 1L, each = block_length)[seq_len(nt)]
+      } else {
+        nft <- nt
+        vft <- c(seq_len(nt) - 1L) # Index from zero for C++
+      }
+    }
+    # Set for fishing rate areas
+    if (is.element(fish_rate_by, c(0L, 2L))) { # None or block
+      nfa <- 1L
+      vfa <- rep(0L, na) # Index from zero for C++
+    } else {
+      nfa <- na
+      vfa <- c(seq_len(na) - 1L) # Index from zero for C++
+    }
+    cat("estimating mF; using fish_rate_by from settings \n")
   }
 
   #---------------- Unpack arguments for tmb_data -----------------------------#
@@ -718,20 +746,21 @@ mmmFit <- function(data,
     class       = c("mmmFit"))
 }
 
-
 #' Settings for \code{mmmFit()}
 #'
-#' @param error_family Character. One of \code{"nb1"} or \code{"poisson"}
+#' @param error_family Integer. \code{0} = Poisson; \code{1} = NB1.
 #' @param span_liberty Integer. Min and max time steps at liberty before
 #'   recapture. The initial time at liberty \code{span_liberty[1]} should
 #'   agree in duration with \code{days_liberty} from \code{mmmTags()}.
-#' @param time_varying Logical. Should movement rates vary through time?
-#' @param time_process Character. One of \code{"none"} or \code{"rw"}
+#' @param time_varying Integer. \code{0} = None; \code{1} = Time varying
+#' movement rates.
+#' @param time_process Integer. \code{0} = None; \code{1} = Negative
+#' binomial (NB1).
 #' @param cycle_length Integer. Cycle length or \code{0} for no cycle.
 #' @param block_length Integer. Block length for movement rate.
-#' @param fish_rate_by Character. Estimate F as a single value (\code{"none"}),
-#'   by time steps as blocks (\code{"block"}), by areas (\code{"areas"}), or by
-#'   both blocks and areas (\code{"both"}).
+#' @param fish_rate_by Integer. Estimate F \code{0} = As a single value;
+#'   \code{1} = By areas; \code{2} = By time steps as blocks;
+#'   \code{3} = By both areas and blocks.
 #' @param results_step Integer. Results time step as a multiple of the data
 #'   time step.
 #' @param nlminb_loops Integer. Number of times to run [stats::nlminb()]
@@ -744,17 +773,17 @@ mmmFit <- function(data,
 #'
 #' @examples
 #'
-mmmSet <- function (error_family = c("nb1", "poisson"),
+mmmSet <- function (error_family = c(nb1 = 1, poisson = 0),
                     span_liberty = c(1, Inf),
                     time_varying = 0,
-                    time_process = c("none", "rw"),
+                    time_process = c(none = 0, rw = 1),
                     cycle_length = 0,
                     block_length = 0,
-                    fish_rate_by = c("none", "block", "area", "both"),
+                    fish_rate_by = c(none = 0, area = 1, block = 2, both = 3),
                     results_step = 1,
                     nlminb_loops = 5,
                     newton_steps = 5,
-                    openmp_cores = NULL) {
+                    openmp_cores = 1) {
 
   #--------------- Return a list of settings ----------------------------------#
 
