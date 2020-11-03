@@ -20,16 +20,16 @@
 #' @examples
 #'
 #' x <- data.frame(
-#'   Release_Date = c("2010-06-01", "2015-04-01", "2018-06-01", "2020-06-01"),
+#'   Release_Date = c("2010-06-01", "2015-04-01", "2018-06-01", "2019-06-01"),
 #'   Release_Area = c(1,1,1,1),
 #'   Release_Group = c("F", "F", "F", "M"),
 #'   ID = c("TAG001", "TAG002", "TAG003", "TAG004"))
 #' y <- data.frame(
-#'   Release_Date = c("2010-06-01", "2018-06-01", "2020-06-01"),
+#'   Release_Date = c("2010-06-01", "2018-06-01", "2019-06-01"),
 #'   Release_Area = c(1,1,1),
+#'   Release_Group = c("F", "F", "M"),
 #'   Recover_Date = c("2013-08-01", "2020-01-01", "2020-08-01"),
 #'   Recover_Area = c(1,2,1),
-#'   Release_Group = c("F", "F", "M"),
 #'   ID = c("TAG001", "TAG003", "TAG004"))
 #' cols <- list(
 #'   release_date = "Release_Date",
@@ -63,13 +63,11 @@ mmmTags <- function (x,
   checkmate::assert_list(cols, unique = TRUE)
   checkmate::assert_list(groups, unique = TRUE, null.ok = TRUE)
   checkmate::assert_character(time_step, len = 1, null.ok = TRUE)
-  checkmate::assert_numeric(days_liberty, lower = 0, len = 1, null.ok = TRUE)
+  checkmate::assert_integerish(days_liberty, lower = 0, len = 1, null.ok = TRUE)
 
   #--------------- Check time step --------------------------------------------#
 
   if (is.null(time_step)) {
-    time_step <- "year"
-  } else if (is.na(time_step)) {
     time_step <- "year"
   } else if (is.element(time_step, c("year", "month", "day"))) {
     time_step <- time_step
@@ -79,12 +77,14 @@ mmmTags <- function (x,
 
   #--------------- Set default values -----------------------------------------#
 
-  if (time_step == "year") {
-    days_liberty <- max(days_liberty, 365.25, na.rm = TRUE)
-  } else if (time_step == "month") {
-    days_liberty <- max(days_liberty, 31, na.rm = TRUE)
-  } else {
-    days_liberty <- max(days_liberty, 1, na.rm = TRUE)
+  if (is.null(days_liberty)) {
+    if (time_step == "year") {
+      days_liberty <- 365L
+    } else if (time_step == "month") {
+      days_liberty <- 31L
+    } else {
+      days_liberty <- 1L
+    }
   }
 
   #--------------- Check required columns -------------------------------------#
@@ -118,9 +118,9 @@ mmmTags <- function (x,
   # Rename columns y
   colnames(y)[which(colnames(y) == cols$release_date)] <- "release_date"
   colnames(y)[which(colnames(y) == cols$release_area)] <- "release_area"
+  colnames(y)[which(colnames(y) == cols$group)] <- "group"
   colnames(y)[which(colnames(y) == cols$recover_date)] <- "recover_date"
   colnames(y)[which(colnames(y) == cols$recover_area)] <- "recover_area"
-  colnames(y)[which(colnames(y) == cols$group)] <- "group"
   colnames(y)[which(colnames(y) == cols$id)] <- "id"
 
   #--------------- Define x and y ---------------------------------------------#
@@ -207,29 +207,6 @@ mmmTags <- function (x,
   x <- dplyr::mutate(x, group_index = mmmGroup(group, groups))
   y <- dplyr::mutate(y, group_index = mmmGroup(group, groups))
 
-  #--------------- Create mW --------------------------------------------------#
-
-  if (time_step == "year") {
-    na <- max(c(x$release_area, y$recover_area)) + 1L
-    mW <- array(1L, dim = c(1, na))
-  } else if (time_step == "month") {
-    mW <- dplyr::mutate(y, month = lubridate::month(y$recover_date)) %>%
-      dplyr::select(month, recover_area) %>%
-      dplyr::group_by(month, recover_area) %>%
-      dplyr::mutate(count = dplyr::n()) %>%
-      dplyr::ungroup() %>%
-      dplyr::distinct(.keep_all = TRUE) %>%
-      dplyr::arrange(recover_area) %>%
-      tidyr::pivot_wider(names_from = recover_area, values_from = count) %>%
-      dplyr::arrange(month) %>%
-      dplyr::select(-month) %>%
-      as.matrix()
-    if (typeof(mW) != "integer") { mode(mW) <- "integer" }
-  } else if (time_step == "day") {
-    cat("mW not implemented for time_step == 'day'")
-    mW <- array(1L, dim = c(1, na))
-  }
-
   #--------------- Convert date to time step ----------------------------------#
 
   if (time_step == "year") {
@@ -243,9 +220,8 @@ mmmTags <- function (x,
         lubridate::year(recover_date) - lubridate::year(date_lims[1])))
     # Convert liberty
     steps_liberty <- round(exp(log(days_liberty) - log(365.25)))
-    cat(paste("days at liberty:", days_liberty), "\n")
-    cat(paste("steps at liberty:", steps_liberty[1]), "\n")
-    cat("use caution if days and steps (years) at liberty disagree \n")
+    cat(paste0("days at liberty: ", days_liberty,"; "))
+    cat(paste0("steps (years) at liberty: ", steps_liberty[1]), "\n")
   } else if (time_step == "month") {
     x <- x %>% dplyr::mutate(
       release_step = as.integer(
@@ -260,9 +236,8 @@ mmmTags <- function (x,
           lubridate::month(recover_date) - lubridate::month(date_lims[1])))
     # Convert liberty
     steps_liberty <- round(exp(log(days_liberty) - log(30)))
-    cat(paste("days at liberty:", days_liberty[1], "\n"))
-    cat(paste("steps at liberty:", steps_liberty[1], "\n"))
-    cat("use caution if days and steps (months) at liberty disagree.\n")
+    cat(paste0("days at liberty: ", days_liberty[1], "; "))
+    cat(paste0("steps (months) at liberty: ", steps_liberty[1]), "\n")
   } else if (time_step == "day") {
     x <- x %>% dplyr::mutate(
       release_step = as.integer(release_date - date_lims[1]))
@@ -270,7 +245,8 @@ mmmTags <- function (x,
       release_step = as.integer(release_date - date_lims[1]),
       recover_step = as.integer(recover_date - date_lims[1]))
     steps_liberty <- days_liberty
-    cat(paste("days at liberty:", days_liberty), "\n")
+    cat(paste0("days at liberty: ", days_liberty), "; ")
+    cat(paste0("steps (days) at liberty: ", steps_liberty[1]), "\n")
   } else {
     stop("time_step must be one of 'year', 'month', or 'day'.")
   }
@@ -282,13 +258,9 @@ mmmTags <- function (x,
 
   #--------------- Select columns ---------------------------------------------#
 
-  # x <- dplyr::select(x, release_step, release_area, group_index)
-  # y <- dplyr::select(y, release_step, release_area, recover_step, recover_area,
-  #                    group_index)
-
-  x <- dplyr::select(x, group_index, release_area, release_step)
-  y <- dplyr::select(y, recover_area, recover_step, group_index,
-                     release_area, release_step)
+  x <- dplyr::select(x, release_step, release_area, group_index)
+  y <- dplyr::select(y, release_step, release_area, group_index,
+                     recover_step, recover_area)
 
   #--------------- Create mT --------------------------------------------------#
 
@@ -296,18 +268,21 @@ mmmTags <- function (x,
     dplyr::mutate(count = dplyr::n()) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
+    dplyr::arrange(release_step, release_area, group_index) %>%
     as.matrix()
   if (typeof(mT) != "integer") { mode(mT) <- "integer" }
 
   #--------------- Create mR --------------------------------------------------#
 
-  mR <- dplyr::group_by(y, release_step, release_area, recover_step,
-                        recover_area, group_index) %>%
+  mR <- dplyr::group_by(y, release_step, release_area, group_index) %>%
+    dplyr::group_by(recover_step, recover_area, .add = TRUE) %>%
     dplyr::mutate(count = dplyr::n()) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
+    dplyr::arrange(release_step, release_area, group_index,
+                   recover_step, recover_area) %>%
     as.matrix()
-  if (typeof(mR) != "integer") {mode(mR) <- "integer"}
+  if (typeof(mR) != "integer") { mode(mR) <- "integer" }
 
   #--------------- Return a list ----------------------------------------------#
 
@@ -315,12 +290,11 @@ mmmTags <- function (x,
   return(structure(list(
     mT = mT,
     mR = mR,
-    mW = mW,
     groups = groups,
     time_step = time_step,
     date_lims = date_lims,
     days_liberty = days_liberty,
-    init_liberty = steps_liberty),
+    steps_liberty = steps_liberty),
     class = "mmmTags"))
 }
 
@@ -422,6 +396,65 @@ mmmRates <- function (x,
     dplyr::select(-date, -step) %>%
     as.matrix()
   return(x)
+}
+
+#' Create Monthly Weighting for Annual Fishing Mortality
+#'
+#' @param tags An \code{mmmTags} object. See \code{mmmTags()}.
+#' @param rate_step String. Currenlty implemented for \code{"month"} only.
+#'
+#' @return A matrix of monthly weights for fishing mortality rates.
+#'
+#' @export
+#'
+#' @examples
+#'
+mmmWeights <- function (tags,
+                        rate_step = "year") {
+
+  #--------------- Check arguments --------------------------------------------#
+
+  checkmate::assert_class(tags, "mmmTags", null.ok = FALSE)
+
+  #---------------- Unpack arguments ------------------------------------------#
+
+  mR <- as.data.frame(tags$mR)
+  time_step <- tags$time_step
+
+  #---------------- Create area-month data frame ------------------------------#
+
+  recover_area <- rep(c(seq_len(max(mR$recover_area) + 1L) - 1L), each = 12)
+  month_index <- rep(c(seq_len(12) - 1L), max(mR$recover_area) + 1L)
+  d <- data.frame(recover_area = recover_area, month_index = month_index)
+
+  #---------------- Create weights matrix -------------------------------------#
+
+  if (time_step == "month" & rate_step == "year") {
+    mW <- dplyr::mutate(mR, month_index = recover_step %% 12L) %>%
+      dplyr::select(recover_area, month_index) %>%
+      dplyr::group_by(recover_area, month_index) %>%
+      dplyr::mutate(count = dplyr::n()) %>%
+      dplyr::ungroup() %>%
+      dplyr::distinct(.keep_all = TRUE) %>%
+      dplyr::group_by(recover_area) %>%
+      dplyr::mutate(weight = count / sum(count)) %>%
+      dplyr::ungroup() %>%
+      dplyr::arrange(recover_area, month_index) %>%
+      dplyr::full_join(d, by = c("recover_area", "month_index")) %>%
+      dplyr::arrange(recover_area, month_index) %>%
+      tidyr::replace_na(list(weight = 0)) %>%
+      dplyr::select(-count) %>%
+      tidyr::pivot_wider(names_from = recover_area, values_from = weight) %>%
+      dplyr::select(-month_index) %>%
+      as.matrix()
+  } else {
+    mW <- NULL
+    cat("warning: currently implemented for tags$time_step == 'month' only \n")
+  }
+
+  #--------------- Return weights matrix --------------------------------------#
+
+  return(mW)
 }
 
 #' Map Values to Groups
