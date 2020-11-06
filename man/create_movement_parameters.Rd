@@ -4,15 +4,10 @@
 \alias{create_movement_parameters}
 \title{Generic Create Movement Parameter Array}
 \usage{
-create_movement_parameters(x, d = NULL, t = FALSE)
+create_movement_parameters(x, ...)
 }
 \arguments{
 \item{x}{A vector of parameter values or array of movement rates}
-
-\item{d}{A vector of array dimensions (only used for vector method)}
-
-\item{t}{Logical. Transpose the first two dimensions of the parameter
-array?}
 }
 \value{
 An array

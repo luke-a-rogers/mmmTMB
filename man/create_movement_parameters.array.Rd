@@ -4,12 +4,12 @@
 \alias{create_movement_parameters.array}
 \title{Create Movement Parameter Array from a Movement Rate Array}
 \usage{
-\method{create_movement_parameters}{array}(x, d = NULL, t = FALSE)
+\method{create_movement_parameters}{array}(x, m = NULL, t = FALSE)
 }
 \arguments{
 \item{x}{Numeric Array. aK.}
 
-\item{d}{Placeholder.}
+\item{m}{Integer matrix. Movement indexes. dim = c(pa, ca)}
 
 \item{t}{Logical. Transpose the first two dimensions of the parameter
 array?}
@@ -21,5 +21,20 @@ An array
 Create Movement Parameter Array from a Movement Rate Array
 }
 \examples{
+
+# 2x2
+x <- array(c(0.9, 0.2, 0.1, 0.8, 0.7, 0.4, 0.3, 0.6), dim = c(2, 2, 2, 1))
+m <- array(c(0, 1, 1, 0), dim = c(2, 2))
+a <- create_movement_parameters(x, m)
+k <- create_movement_rates(a, m)
+all(k == x)
+
+# 3x3 with missing adjacent rates
+v <- c(0.9,0.1,0.3,0,0.8,0,0.1,0.1,0.7,0.6,0.2,0.6,0,0.5,0,0.4,0.3,0.4)
+x <- array(v, dim = c(3,3,2,1))
+m <- array(c(0,1,1,0,0,0,1,1,0), dim = c(3,3))
+a <- create_movement_parameters(x, m)
+k <- create_movement_rates(a, m)
+all(k == x)
 
 }
