@@ -35,6 +35,146 @@ invlogit <- function (y) {
   return(ans)
 }
 
+#' Create Movement Rate Array
+#'
+#' @param a Numeric array. Movement parameters.
+#' @param m Integer matrix. Movement indexes.
+#' @param t Are \code{a} and \code{m} transposes?
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#'
+create_movement_rates <- function (a, m, t = FALSE) {
+  # Check arguments
+  checkmate::assert_array(a, mode = "numeric", any.missing = FALSE)
+  checkmate::assert_array(a, d = 3)
+  checkmate::assert_matrix(m, mode = "integerish", any.missing = FALSE)
+  checkmate::assert_numeric(m, lower = 0, upper = 1)
+  # Convert to transposes
+  if (t) {
+    ta <- a
+    tm <- m
+  } else {
+    ta <- aperm(a, c(2,1,3))
+    tm <- t(m)
+  }
+  # Initialize index limits
+  na <- nrows(tm) # Matrix tm has rows = na, and cols = na
+  npt <- dim(ta)[2] # Array ta has dim = c(np, npt, ng)
+  ng <- dim(ta)[3]
+  # Initialize array
+  k <- array(0, dim = c(na, na, npt, ng))
+  # Compute movement rates from movement parameters
+  for (mg in seq_len(ng)) {
+    for (cpt in seq_len(npt)) {
+      # Set the current parameter indexes to one
+      cp_num <- 1L
+      cp_den <- 1L
+      for (pa in seq_len(na)) {
+        # Set the denominator sum to zero for this row
+        d_sum <- 0
+        for (ca in seq_len(na)) {
+          if (tm[ca, pa] != 0) {
+            d_sum <- d_sum + exp(ta[cp_den, cpt, mg])
+            cp_den <- cp_den + 1
+          }
+        }
+        # Set the probability sum to zero
+        k_sum <- 0L
+        # Compute the probability for ca != pa
+        for (ca in seq_len(na)) {
+          if (tm[ca, pa] != 0) {
+            k[pa, ca, cpt, mg] <- exp(ta[cp_num, cpt, mg]) / (1L + d_sum)
+            k_sum <- k_sum + k[pa, ca, cpt, mg]
+            cp_num <- cp_num + 1
+          }
+        }
+        # Compute the probability for pa == ca
+        k[pa, pa, cpt, mg] <- 1L - k_sum
+      }
+    }
+  }
+  return(k)
+}
+
+#' Generic Create Movement Parameter Array
+#'
+#' @param x A vector of parameter values or array of movement rates
+#' @param d A vector of array dimensions (only used for vector method)
+#' @param t Logical. Transpose the first two dimensions of the parameter
+#'   array?
+#'
+#' @return An array
+#' @export
+#'
+#' @examples
+#'
+create_movement_parameters <- function (x, d = NULL, t = FALSE) {
+  UseMethod("create_movement_parameters")
+}
+
+#' Create Movement Parameter Array from a Vector of Parameters
+#'
+#' @param x Numeric vector. Movement parameters.
+#' @param d Integer vector. Dimensions based on source of \code{x}. From
+#'   \code{R} use \code{c(npt, np, ng)} or from \code{TMB} use
+#'   \code{c(np, npt, ng)}.
+#' @param t Logical. Transpose the first two dimensions of the parameter
+#'   array?
+#'
+#' @return An array.
+#' @export
+#'
+#' @examples
+#'
+#' # aP
+#' x <- rnorm(24, 0, 1)
+#' d <- c(6, 4, 2)
+#' aP <- create_movement_parameters(x, d)
+#'
+#' # taP
+#' x <- rnorm(24, 0, 1)
+#' d <- c(6, 4, 2)
+#' taP <- create_movement_parameters(x, d, TRUE)
+#'
+create_movement_parameters.numeric <- function (x,
+                                                d = NULL,
+                                                t = FALSE) {
+  # Check arguments
+  checkmate::assert_numeric(x, finite = TRUE, any.missing = FALSE)
+  checkmate::assert_integerish(d, lower = 0, len = 3, any.missing = FALSE)
+  checkmate::assert_logical(t, len = 1L, any.missing = FALSE)
+  # Assemble array
+  a <- array(x, dim = d)
+  # Transpose?
+  if (t) a <- aperm(a, c(2, 1, 3))
+  # Return
+  return(a)
+}
+
+#' Create Movement Parameter Array from a Movement Rate Array
+#'
+#' @param x Numeric Array. aK.
+#' @param d Placeholder.
+#' @param t Logical. Transpose the first two dimensions of the parameter
+#'   array?
+#'
+#' @return An array
+#' @export
+#'
+#' @examples
+#'
+#' x <- array(c(0.9, 0.1, 0.1, 0.9, 0.9, 0.1, 0.1, 0.9), dim = c(2,2,2))
+#' create_movement_parameters(x)
+#'
+create_movement_parameters.array <- function (x,
+                                              d = NULL,
+                                              t = FALSE) {
+  cat("not yet implemented for arrays")
+}
+
 #' Subset Numeric Vector or Matrix by Rowname, Colname, or Name
 #'
 #' @param x [numeric()] or [matrix()]
