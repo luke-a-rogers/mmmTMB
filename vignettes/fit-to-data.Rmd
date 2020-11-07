@@ -1,0 +1,52 @@
+---
+title: "fit-to-data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{fit-to-data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5, 
+  fig.fullwidth = TRUE
+)
+```
+
+```{r setup}
+library(mmmTMB)
+```
+
+# Wrangle Tag Data
+
+## Load Tag Data
+```{r load-tag-data}
+# Use observational data
+# TODO: Switch to simulated data
+load("~/github/sablefishData/data/sable_released.rda")
+load("~/github/sablefishData/data/sable_recovered.rda")
+
+```
+
+## Create mmmTags object
+```{r create-mmmtags}
+# Prepare arguments
+cols <- list(
+  release_date = "Release_Date",
+  release_area = "Release_Area",
+  recover_date = "Recovery_Date",
+  recover_area = "Recovery_Area",
+  id = "Tag_ID"
+)
+# Call mmmTags()
+tags <- mmmTags(x = sable_released,
+                y = sable_recovered,
+                cols = cols,
+                time_step = "year",
+                date_lims = c("1979-01-01", "2018-12-31"))
+
+```
