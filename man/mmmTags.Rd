@@ -9,35 +9,76 @@ mmmTags(
   y,
   cols = NULL,
   groups = NULL,
-  time_step = NULL,
-  date_lims = NULL,
+  step = NULL,
+  limits = NULL,
   days_liberty = NULL
 )
 }
 \arguments{
-\item{x}{A data frame of named columns. See details.}
+\item{x}{\code{\link[=data.frame]{data.frame()}} Tag release data. See details.}
 
-\item{y}{A data frame of named columns. See details.}
+\item{y}{\code{\link[=data.frame]{data.frame()}} Tag recovery data. See details.}
 
-\item{cols}{A list of named character elements. See details.}
+\item{cols}{\code{\link[=list]{list()}} Named elements are character strings. See details.}
 
-\item{groups}{A list of named vectors. See details.}
+\item{groups}{\code{\link[=list]{list()}} Named elements are vectors. See details.}
 
-\item{time_step}{A character string. One of \code{year}, \code{month}, or
+\item{step}{\code{\link[=character]{character()}} One of \code{year}, \code{month}, or
 \code{day}.}
 
-\item{date_lims}{A character vector with two elements. "\%Y-\%M-\%D".}
+\item{limits}{\code{\link[=character]{character()}} Start and end dates as \code{"\%Y-\%M-\%D"}
+character strings.}
 
-\item{days_liberty}{Integer scalar. Minimum number of days at liberty.}
+\item{days_liberty}{\code{\link[=integer]{integer()}} Minimum number of days at liberty.}
 }
 \value{
-
+A list object of class \code{mmmTags}.
 }
 \description{
-Prepare Tag Data
+Prepare tag release and recovery data prior to fitting
+a Markovian movement model via \code{mmmFit()}.
 }
 \details{
-TBD
+The \code{x} & \code{y} arguments must be data frames that contain
+certain columns that have the same column name in both data frames.
+Both \code{x} & \code{y} must include:
+\itemize{
+\item A \code{\link[=character]{character()}} column giving unique individual tag IDs.
+\item A \code{\link[=Date]{Date()}} column giving individual tag release dates.
+\item An \code{\link[=integer]{integer()}} column giving release areas indexed from one.
+}
+In addition, \code{y} must include:
+\itemize{
+\item A \code{\link[=Date]{Date()}} column giving individual tag recovery dates.
+\item An \code{\link[=integer]{integer()}} column giving recovery areas indexed from one.
+}
+Optionally, both \code{x} & \code{y} can include:
+\itemize{
+\item An \code{\link[=atomic]{atomic()}} column giving values grouped by \code{groups}.
+}
+Note that \code{\link[=character]{character()}} columns in \code{"\%Y-\%M-\%D"} format may be substituted
+for \code{\link[=Date]{Date()}} columns.
+
+The \code{cols} argument is a \code{\link[=list]{list()}} of named elements. The elements
+must be \code{\link[=character]{character()}} string names of columns in \code{x} or
+\code{y}. There must be one element for each of the required element
+names (except as noted):
+\itemize{
+\item \code{id}: \code{x} & \code{y} Individual tag identification
+\item \code{release_date}: \code{x} & \code{y} Release date
+\item \code{release_area}: \code{x} & \code{y} Release area
+\item \code{recover_date}: \code{y} Recovery date
+\item \code{recover_area}: \code{y} Recovery area
+\item \code{group}: (Optional) Grouping variable
+}
+
+The \code{groups} argument is a \code{\link[=list]{list()}} of named elements. The elements
+must be atomic vectors that include all values included in each named
+group. All element vectors must be of the same type. The names of the
+element vectors must be unique. For \code{groups} to have any effect,
+the element \code{group} in argument \code{cols} must name a column
+in both \code{x} & \code{y} that has values include in the element
+vectors in \code{groups}.
 }
 \examples{
 
@@ -61,11 +102,10 @@ cols <- list(
   group = "Release_Group",
   id = "ID")
 groups <- list(m = "M", f = "F")
-time_step <- "year"
-date_lims <- c("2010-01-01", "2020-12-31")
+step <- "year"
+limits <- c("2010-01-01", "2020-12-31")
 days_liberty <- 0L
 
-tags <- mmmTags(x, y, cols, groups, time_step, date_lims, days_liberty)
-
+tags <- mmmTags(x, y, cols, groups, step, limits, days_liberty)
 
 }
