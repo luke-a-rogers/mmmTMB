@@ -37,16 +37,17 @@ load("~/github/sablefishData/data/sable_recovered.rda")
 # Prepare arguments
 cols <- list(
   release_date = "Release_Date",
-  release_area = "Release_Area",
+  release_area = "Release_Region",
   recover_date = "Recovery_Date",
-  recover_area = "Recovery_Area",
+  recover_area = "Recovery_Region",
   id = "Tag_ID"
 )
 # Call mmmTags()
 tags <- mmmTags(x = sable_released,
                 y = sable_recovered,
                 cols = cols,
-                time_step = "year",
-                date_lims = c("1979-01-01", "2018-12-31"))
+                step = "year",
+                limits = c("1979-01-01", "2018-12-31"),
+                days_liberty = 0)
 
 ```
