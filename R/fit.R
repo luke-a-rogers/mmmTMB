@@ -482,7 +482,7 @@ mmmFit <- function(data,
   } else {
     vB <- rep(1, ng)
   }
-  # Scalar negative binomial dispersal
+  # Scalar negative binomial dispersion
   if (!is.null(parameters$sD)) {
     sD <- parameters$sD
   } else {
