@@ -47,6 +47,7 @@ invlogit <- function (y) {
 #' @examples
 #'
 create_movement_rates <- function (a, m, t = FALSE) {
+
   # Check arguments
   checkmate::assert_array(a, mode = "numeric", any.missing = FALSE)
   checkmate::assert_array(a, d = 3)
@@ -61,7 +62,7 @@ create_movement_rates <- function (a, m, t = FALSE) {
     tm <- t(m)
   }
   # Initialize index limits
-  na <- nrows(tm) # Matrix tm has rows = na, and cols = na
+  na <- nrow(tm) # Matrix tm has rows = na, and cols = na
   npt <- dim(ta)[2] # Array ta has dim = c(np, npt, ng)
   ng <- dim(ta)[3]
   # Initialize array
@@ -102,17 +103,28 @@ create_movement_rates <- function (a, m, t = FALSE) {
 #' Generic Create Movement Parameter Array
 #'
 #' @param x A vector of parameter values or array of movement rates
-#' @param d A vector of array dimensions (only used for vector method)
-#' @param t Logical. Transpose the first two dimensions of the parameter
-#'   array?
+#' @param ... Other arguments for class specific methods
 #'
 #' @return An array
 #' @export
 #'
 #' @examples
 #'
-create_movement_parameters <- function (x, d = NULL, t = FALSE) {
+create_movement_parameters <- function (x, ...) {
   UseMethod("create_movement_parameters")
+}
+
+#' Default Create Movement Parameter Array
+#'
+#' @param x A vector of parameter values or array of movement rates
+#' @param ... Other arguments for class specific methods
+#'
+#' @return
+#'
+#' @examples
+#'
+create_movement_parameters.default <- function (x, ...) {
+  stop("methods only implemented for numeric and array classes")
 }
 
 #' Create Movement Parameter Array from a Vector of Parameters
@@ -125,7 +137,6 @@ create_movement_parameters <- function (x, d = NULL, t = FALSE) {
 #'   array?
 #'
 #' @return An array.
-#' @export
 #'
 #' @examples
 #'
@@ -157,22 +168,93 @@ create_movement_parameters.numeric <- function (x,
 #' Create Movement Parameter Array from a Movement Rate Array
 #'
 #' @param x Numeric Array. aK.
-#' @param d Placeholder.
+#' @param m Integer matrix. Movement indexes. dim = c(pa, ca)
 #' @param t Logical. Transpose the first two dimensions of the parameter
 #'   array?
 #'
 #' @return An array
-#' @export
 #'
 #' @examples
 #'
-#' x <- array(c(0.9, 0.1, 0.1, 0.9, 0.9, 0.1, 0.1, 0.9), dim = c(2,2,2))
-#' create_movement_parameters(x)
+#' # 2x2
+#' x <- array(c(0.9, 0.2, 0.1, 0.8, 0.7, 0.4, 0.3, 0.6), dim = c(2, 2, 2, 1))
+#' m <- array(c(0, 1, 1, 0), dim = c(2, 2))
+#' a <- create_movement_parameters(x, m)
+#' k <- create_movement_rates(a, m)
+#' all(k - x < 1e-12)
+#'
+#' # 3x3 with missing adjacent rates
+#' v <- c(0.9,0.1,0.3,0,0.8,0,0.1,0.1,0.7,0.6,0.2,0.6,0,0.5,0,0.4,0.3,0.4)
+#' x <- array(v, dim = c(3,3,2,1))
+#' m <- array(c(0,1,1,0,0,0,1,1,0), dim = c(3,3))
+#' a <- create_movement_parameters(x, m)
+#' k <- create_movement_rates(a, m)
+#' all(k - x < 1e-12)
 #'
 create_movement_parameters.array <- function (x,
-                                              d = NULL,
+                                              m = NULL,
                                               t = FALSE) {
-  cat("not yet implemented for arrays")
+
+  # Check arguments
+  checkmate::assert_array(x, d = 4, any.missing = FALSE)
+  checkmate::assert_null(d)
+  checkmate::assert_logical(t, len = 1L, any.missing = FALSE)
+  # Initialize index limits
+  np <- sum(m)
+  na <- dim(x)[1]
+  npt <- dim(x)[3]
+  ng <- dim(x)[4]
+  # Check x against m
+  for (mg in seq_len(ng)) {
+    for (cpt in seq_len(npt)) {
+      for (ca in seq_len(na)) {
+        for (pa in seq_len(na)) {
+          if (pa != ca) {
+            if (m[pa, ca] == 0) {
+              if (x[pa, ca, npt, ng] != 0) {
+                stop("movement rates must correspond to parameter index")
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  # Initialize array
+  ta <- array(0, dim = c(np, npt, ng))
+  # Compute movement parameters from movement rates
+  for (mg in seq_len(ng)) {
+    for (cpt in seq_len(npt)) {
+      # Set the current parameter index to one
+      cp_ind <- 1L
+      # Iterate over rows
+      for (pa in seq_len(na)) {
+        # Set the movement rate sum to zero
+        k_sum <- 0L
+        # Iterate over columns
+        for (ca in seq_len(na)) {
+          if (m[pa, ca] != 0) {
+            k_sum <- k_sum + x[pa, ca, cpt, mg]
+          }
+        }
+        # Compute the movement parameters
+        for (ca in seq_len(na)) {
+          if (m[pa, ca] != 0) {
+            ta[cp_ind, cpt, mg] <- log(x[pa, ca, cpt, mg]) - log(1 - k_sum)
+            cp_ind <- cp_ind + 1L
+          }
+        }
+      }
+    }
+  }
+  # Untranspose?
+  if (t) {
+    a <- ta
+  } else {
+    a <- aperm(ta, c(2, 1, 3))
+  }
+  # Return
+  return(a)
 }
 
 #' Subset Numeric Vector or Matrix by Rowname, Colname, or Name
