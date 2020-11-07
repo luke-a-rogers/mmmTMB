@@ -1,19 +1,64 @@
 #' Prepare Tag Data
 #'
-#' @param x A data frame of named columns. See details.
-#' @param y A data frame of named columns. See details.
-#' @param cols A list of named character elements. See details.
-#' @param groups A list of named vectors. See details.
-#' @param time_step A character string. One of \code{year}, \code{month}, or
-#'   \code{day}.
-#' @param limits A character vector with two elements. "%Y-%M-%D".
-#' @param days_liberty Integer scalar. Minimum number of days at liberty.
+#' @description Prepare tag release and recovery data prior to fitting
+#' a Markovian movement model via \code{mmmFit()}.
 #'
-#' @details TBD
+#' @param x [data.frame()] Tag release data. See details.
+#' @param y [data.frame()] Tag recovery data. See details.
+#' @param cols [list()] Named elements are character strings. See details.
+#' @param groups [list()] Named elements are vectors. See details.
+#' @param step [character()] One of \code{year}, \code{month}, or
+#'   \code{day}.
+#' @param limits [character()] Start and end dates as `"%Y-%M-%D"`
+#'   character strings.
+#' @param days_liberty [integer()] Minimum number of days at liberty.
+#'
+#' @details
+#'
+#' The \code{x} & \code{y} arguments must be data frames that contain
+#' certain columns that have the same column name in both data frames.
+#' Both \code{x} & \code{y} must include:
+#' \itemize{
+#'   \item A [character()] column giving unique individual tag IDs.
+#'   \item A [Date()] column giving individual tag release dates.
+#'   \item An [integer()] column giving release areas indexed from one.
+#' }
+#' In addition, \code{y} must include:
+#' \itemize{
+#'   \item A [Date()] column giving individual tag recovery dates.
+#'   \item An [integer()] column giving recovery areas indexed from one.
+#' }
+#' Optionally, both \code{x} & \code{y} can include:
+#' \itemize{
+#'   \item An [atomic()] column giving values grouped by \code{groups}.
+#' }
+#' Note that [character()] columns in `"%Y-%M-%D"` format may be substituted
+#' for [Date()] columns.
+#'
+#' The \code{cols} argument is a [list()] of named elements. The elements
+#'   must be [character()] string names of columns in \code{x} or
+#'   \code{y}. There must be one element for each of the required element
+#'   names (except as noted):
+#'   \itemize{
+#'     \item \code{id}: \code{x} & \code{y} Individual tag identification
+#'     \item \code{release_date}: \code{x} & \code{y} Release date
+#'     \item \code{release_area}: \code{x} & \code{y} Release area
+#'     \item \code{recover_date}: \code{y} Recovery date
+#'     \item \code{recover_area}: \code{y} Recovery area
+#'     \item \code{group}: (Optional) Grouping variable
+#'   }
+#'
+#' The \code{groups} argument is a [list()] of named elements. The elements
+#'   must be atomic vectors that include all values included in each named
+#'   group. All element vectors must be of the same type. The names of the
+#'   element vectors must be unique. For \code{groups} to have any effect,
+#'   the element \code{group} in argument \code{cols} must name a column
+#'   in both \code{x} & \code{y} that has values include in the element
+#'   vectors in \code{groups}.
 #'
 #' @importFrom magrittr `%>%`
 #'
-#' @return
+#' @return A list object of class \code{mmmTags}.
 #'
 #' @export
 #'
@@ -39,12 +84,11 @@
 #'   group = "Release_Group",
 #'   id = "ID")
 #' groups <- list(m = "M", f = "F")
-#' time_step <- "year"
+#' step <- "year"
 #' limits <- c("2010-01-01", "2020-12-31")
 #' days_liberty <- 0L
 #'
-#' tags <- mmmTags(x, y, cols, groups, time_step, limits, days_liberty)
-#'
+#' tags <- mmmTags(x, y, cols, groups, step, limits, days_liberty)
 #'
 mmmTags <- function (x,
                      y,
@@ -53,6 +97,10 @@ mmmTags <- function (x,
                      step = NULL,
                      limits = NULL,
                      days_liberty = NULL) {
+
+  # Start the clock ------------------------------------------------------------
+
+  tictoc::tic("mmmTags()")
 
   # Check arguments ------------------------------------------------------------
 
@@ -83,7 +131,7 @@ mmmTags <- function (x,
     cols$group <- "nogroup"
     x$nogroup <- 1L
     y$nogroup <- 1L
-    cat("using no groups: groups or cols$group null")
+    cat("no groups: if desired specify in groups and cols\n")
   }
   # Time step
   if (is.null(step)) {
@@ -140,21 +188,20 @@ mmmTags <- function (x,
   y <- dplyr::mutate(y, release_date = lubridate::as_date(release_date))
   y <- dplyr::mutate(y, recover_date = lubridate::as_date(recover_date))
 
-
   # Check column class or type -------------------------------------------------
 
   # Data frame x
   checkmate::assert_date(x$release_date, any.missing = FALSE)
   checkmate::assert_integerish(x$release_area, lower = 1, any.missing = FALSE)
   checkmate::assert_integerish(x$group_raw, lower = 1, any.missing = FALSE)
-  checkmate::assert_character(x$id, len = 1, any.missing = FALSE)
+  checkmate::assert_character(x$id, any.missing = FALSE)
   # Data frame y
   checkmate::assert_date(y$release_date, any.missing = FALSE)
   checkmate::assert_date(y$recover_date, any.missing = FALSE)
   checkmate::assert_integerish(y$release_area, lower = 1, any.missing = FALSE)
   checkmate::assert_integerish(y$recover_area, lower = 1, any.missing = FALSE)
   checkmate::assert_integerish(y$group_raw, lower = 1, any.missing = FALSE)
-  checkmate::assert_character(y$id, len = 1, any.missing = FALSE)
+  checkmate::assert_character(y$id, any.missing = FALSE)
 
   # Convert limits to dates ----------------------------------------------------
 
@@ -199,7 +246,7 @@ mmmTags <- function (x,
   y <- dplyr::distinct(y, id, release_date, release_area, .keep_all = TRUE)
   # Report losses
   cat("removed", x_rows - nrow(x), "duplicate release tags\n")
-  cat("removed", y_rows - nrow(y), "duplicate recover tags\n")
+  cat("removed", y_rows - nrow(y), "duplicate recovery tags\n")
 
   # Filter x and y by days at liberty ------------------------------------------
 
@@ -215,94 +262,121 @@ mmmTags <- function (x,
 
   # Convert groups to integer --------------------------------------------------
 
-  x <- dplyr::mutate(x, group_index = mmmGroup(group, groups))
-  y <- dplyr::mutate(y, group_index = mmmGroup(group, groups))
+  x <- dplyr::mutate(x, group = mmmGroup(group_raw, groups))
+  y <- dplyr::mutate(y, group = mmmGroup(group_raw, groups))
 
-
-  # TODO: Continue from here
-  # TODO: Check that group is identical between release and recover
-
-
-
-  #--------------- Convert date to time step ----------------------------------#
+  # Convert date to step -------------------------------------------------------
 
   if (step == "year") {
-    x <- x %>% dplyr::mutate(
-      release_step = as.integer(
-        lubridate::year(release_date) - lubridate::year(limits[1])))
-    y <- y %>% dplyr::mutate(
-      release_step = as.integer(
-        lubridate::year(release_date) - lubridate::year(limits[1])),
-      recover_step = as.integer(
-        lubridate::year(recover_date) - lubridate::year(limits[1])))
-    # Convert liberty
+    # Initial limit
+    yr <- lubridate::year(limits[1])
+    # x release step
+    x <- dplyr::mutate(x, release_step = lubridate::year(release_date) - yr)
+    x <- dplyr::mutate(x, release_step = as.integer(release_step))
+    # y release step
+    y <- dplyr::mutate(y, release_step = lubridate::year(release_date) - yr)
+    y <- dplyr::mutate(y, release_step = as.integer(release_step))
+    # y recover step
+    y <- dplyr::mutate(y, recover_step = lubridate::year(recover_date) - yr)
+    y <- dplyr::mutate(y, recover_step = as.integer(recover_step))
+    # Steps at liberty
     steps_liberty <- round(exp(log(days_liberty) - log(365.25)))
-    cat(paste0("days at liberty: ", days_liberty,"; "))
-    cat(paste0("steps (years) at liberty: ", steps_liberty[1]), "\n")
   } else if (step == "month") {
-    x <- x %>% dplyr::mutate(
-      release_step = as.integer(
-        12 * (lubridate::year(release_date) - lubridate::year(limits[1])) +
-          lubridate::month(release_date) - lubridate::month(limits[1])))
-    y <- y %>% dplyr::mutate(
-      release_step = as.integer(
-        12 * (lubridate::year(release_date) - lubridate::year(limits[1])) +
-          lubridate::month(release_date) - lubridate::month(limits[1])),
-      recover_step = as.integer(
-        12 * (lubridate::year(recover_date) - lubridate::year(limits[1])) +
-          lubridate::month(recover_date) - lubridate::month(limits[1])))
-    # Convert liberty
+    # Initial limits
+    yr <- lubridate::year(limits[1])
+    mo <- lubridate::month(limits[1])
+    # x release step
+    x <- dplyr::mutate(x, rel_yr = lubridate::year(release_date))
+    x <- dplyr::mutate(x, rel_mo = lubridate::month(release_date))
+    x <- dplyr::mutate(x, release_step = 12 * (rel_yr - yr) + (rel_mo - mo))
+    x <- dplyr::mutate(x, release_step = as.integer(release_step))
+    # y release step
+    y <- dplyr::mutate(y, rel_yr = lubridate::year(release_date))
+    y <- dplyr::mutate(y, rel_mo = lubridate::month(release_date))
+    y <- dplyr::mutate(y, release_step = 12 * (rel_yr - yr) + (rel_mo - mo))
+    y <- dplyr::mutate(y, release_step = as.integer(release_step))
+    # y recover step
+    y <- dplyr::mutate(y, rec_yr = lubridate::year(recover_date))
+    y <- dplyr::mutate(y, rec_mo = lubridate::month(recover_date))
+    y <- dplyr::mutate(y, recover_step = 12 * (rec_yr - yr) + (rec_mo - mo))
+    y <- dplyr::mutate(y, recover_step = as.integer(recover_step))
+    # Steps at liberty
     steps_liberty <- round(exp(log(days_liberty) - log(30)))
-    cat(paste0("days at liberty: ", days_liberty[1], "; "))
-    cat(paste0("steps (months) at liberty: ", steps_liberty[1]), "\n")
   } else if (step == "day") {
-    x <- x %>% dplyr::mutate(
-      release_step = as.integer(release_date - limits[1]))
-    y <- y %>% dplyr::mutate(
-      release_step = as.integer(release_date - limits[1]),
-      recover_step = as.integer(recover_date - limits[1]))
-    steps_liberty <- days_liberty
-    cat(paste0("days at liberty: ", days_liberty), "; ")
-    cat(paste0("steps (days) at liberty: ", steps_liberty[1]), "\n")
+    # Initial limit
+    d <- limits[1]
+    # Steps
+    x <- dplyr::mutate(x, release_step = as.integer(release_date - d))
+    y <- dplyr::mutate(y, release_step = as.integer(release_date - d))
+    y <- dplyr::mutate(y, recover_step = as.integer(recover_date - d))
+    # Steps at liberty
+    steps_liberty <- round(days_liberty)
   } else {
     stop("step must be one of 'year', 'month', or 'day'.")
   }
+  # Print time step
+  cat("using", step, "as the time step\n")
 
+  # Select columns -------------------------------------------------------------
 
-  #--------------- Select columns ---------------------------------------------#
+  x <- x %>% dplyr::select(release_step, release_area, group)
+  y <- y %>% dplyr::select(
+    release_step,
+    release_area,
+    group,
+    recover_step,
+    recover_area)
 
-  x <- dplyr::select(x, release_step, release_area, group_index)
-  y <- dplyr::select(y, release_step, release_area, group_index,
-                     recover_step, recover_area)
+  # Create mT ------------------------------------------------------------------
 
-  #--------------- Create mT --------------------------------------------------#
-
-  mT <- dplyr::group_by(x, release_step, release_area, group_index) %>%
+  mT <- x %>%
+    dplyr::group_by(release_step, release_area, group) %>%
     dplyr::mutate(count = dplyr::n()) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
-    dplyr::arrange(release_step, release_area, group_index) %>%
+    dplyr::arrange(release_step, release_area, group) %>%
     as.matrix()
-  if (typeof(mT) != "integer") { mode(mT) <- "integer" }
+  # Confirm mode
+  if (typeof(mT) != "integer") {
+    mode(mT) <- "integer"
+  }
+  cat("mT has", nrow(mT), "rows and", sum(mT[, "count"]), "tag releases\n")
 
-  #--------------- Create mR --------------------------------------------------#
+  # Create mR ------------------------------------------------------------------
 
-  mR <- dplyr::group_by(y, release_step, release_area, group_index) %>%
-    dplyr::group_by(recover_step, recover_area, .add = TRUE) %>%
+  mR <- y %>%
+    dplyr::group_by(
+      release_step,
+      release_area,
+      group,
+      recover_step,
+      recover_area) %>%
     dplyr::mutate(count = dplyr::n()) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
-    dplyr::arrange(release_step, release_area, group_index,
-                   recover_step, recover_area) %>%
+    dplyr::arrange(
+      release_step,
+      release_area,
+      group,
+      recover_step,
+      recover_area) %>%
     as.matrix()
-  if (typeof(mR) != "integer") { mode(mR) <- "integer" }
+  # Confirm mode
+  if (typeof(mR) != "integer") {
+    mode(mR) <- "integer"
+  }
+  cat("mR has", nrow(mR), "rows and", sum(mR[, "count"]), "tag recoveries\n")
 
-  #--------------- Return a list ----------------------------------------------#
+  # Stop the clock -------------------------------------------------------------
 
-  # Include appropriate units at liberty
+  tictoc::toc()
+
+  # Return list of class mmmTags -----------------------------------------------
+
   return(structure(list(
     mT = mT,
     mR = mR,
+    cols = cols,
     groups = groups,
     step = step,
     limits = limits,
