@@ -19,9 +19,9 @@ mmmTags(
 
 \item{y}{\code{\link[=data.frame]{data.frame()}} Tag recovery data. See details.}
 
-\item{cols}{\code{\link[=list]{list()}} Named elements are character strings. See details.}
+\item{cols}{\code{\link[=list]{list()}} Named list of character strings. See details.}
 
-\item{groups}{\code{\link[=list]{list()}} Named elements are vectors. See details.}
+\item{groups}{\code{\link[=list]{list()}} Named list of atomic vectors. See details.}
 
 \item{step}{\code{\link[=character]{character()}} One of \code{year}, \code{month}, or
 \code{day}.}

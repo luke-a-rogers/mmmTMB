@@ -4,32 +4,73 @@
 \alias{mmmRates}
 \title{Prepare Rate Data}
 \usage{
-mmmRates(x, cols = NULL, lims = NULL, areas = NULL, reps = 1, inst = FALSE)
+mmmRates(x, cols, reps = 1, lims = NULL, areas = NULL, inst = FALSE)
 }
 \arguments{
-\item{x}{A data frame of named columns. See details.}
+\item{x}{\code{\link[=data.frame]{data.frame()}} Dates, areas, and rates data. See details.}
 
-\item{cols}{A list of named character elements. See details.}
+\item{cols}{\code{\link[=list]{list()}} Named list of character strings. See details.}
 
-\item{lims}{An integer vector of length 2.}
+\item{reps}{\code{\link[=integer]{integer()}} Number of tag time steps per rate time step (rows).}
 
-\item{areas}{A character vector of area names.}
+\item{lims}{\code{\link[=integer]{integer()}} First and last date (implemented as integer for now).}
 
-\item{reps}{An integer. Number of time steps per row.}
+\item{areas}{\code{\link[=list]{list()}} Named list of area values in index order. See details.}
 
-\item{inst}{Logical. Is the rate an instantaneous rate?}
+\item{inst}{\code{\link[=logical]{logical()}} Is the rate an instantaneous rate?}
 }
 \value{
-
+A matrix of class \code{mmmRates}.
 }
 \description{
-Prepare Rate Data
+Prepare fishing mortality or tag reporting rate data prior
+to fitting a Markovian movement model via \code{mmmFit()}.
+}
+\details{
+The rate time step may differ from tag time step, as long as
+the tag time step is a multiple of the rate time step.
+
+The \code{x} argument must be data frames that contains:
+
+\itemize{
+\item An \code{\link[=integer]{integer()}} column giving the date (integers for now).
+\item An \code{\link[=atomic]{atomic()}} column giving the areas (see \code{areas} argument).
+\item A \code{\link[=numeric]{numeric()}} column giving the rate for the given area and date.
+}
+
+The \code{cols} argument is a \code{\link[=list]{list()}} of named elements. The elements
+must be \code{\link[=character]{character()}} string names of columns in \code{x}. There must
+be one element for each required element name:
+\itemize{
+\item \code{date}: Date as an integer (usually year, month, or day).
+\item \code{area}: Area as an atomic value.
+\item \code{rate}: Numeric rate corresponding to the date and area.
+}
+
+The \code{areas} argument is a \code{\link[=list]{list()}} of named \code{\link[=atomic]{atomic()}} elements.
+The elements must correspond to elements in the area column of \code{x}.
+The elements must be in the same order in which the areas are to be
+indexed. The \code{areas} argument is optional if areas are already
+indexed sequentially from one in \code{x}.
 }
 \examples{
-date <- rep(2010:2016, 3)
-area <- rep(c(1,2,3), each = 7)
-rate <- rep(seq(0.1, 0.5, length.out = 7), 3)
-x <- data.frame(date = date, area = area, rate = rate)
-r1 <- mmmRates(x)
+
+# One tag time step per row
+d <- rep(2010:2016, 3)
+a <- rep(c(1,2,3), each = 7)
+r <- rep(seq(0.1, 0.7, length.out = 7), 3)
+x <- data.frame(d = d, a = a, r = r)
+cols <- list(date = "d", area = "a", rate = "r")
+r1 <- mmmRates(x, cols)
+
+# Twelve tag time steps per row (e.g. monthly tags, yearly rates)
+d <- rep(2010:2016, 3)
+a <- rep(c(1,2,3), each = 7)
+r <- rep(seq(0.1, 0.7, length.out = 7), 3)
+x <- data.frame(d = d, a = a, r = r)
+cols <- list(date = "d", area = "a", rate = "r")
+reps <- 12
+lims <- c(2010, 2011)
+r2 <- mmmRates(x, cols, reps, lims, inst = TRUE)
 
 }

@@ -10,16 +10,16 @@ mmmIndex(n, pattern = NULL, allow = NULL, disallow = NULL)
 \item{n}{\code{\link[=integer]{integer()}} Number of areas.}
 
 \item{pattern}{\code{\link[=integer]{integer()}} One of \code{0}: full movement, or \code{1}:
-direct movement between numerically sequential neighbours only}
+direct movement between numerically sequential neighbours only.}
 
 \item{allow}{\code{\link[=integer]{integer()}} \code{\link[=matrix]{matrix()}} Each row indicates directional
-movement between a pair of areas indexed from \code{1}.}
+movement between a pair of areas indexed from one.}
 
 \item{disallow}{\code{\link[=integer]{integer()}} \code{\link[=matrix]{matrix()}} As for \code{allow}, but
 specified movement is disallowed.}
 }
 \value{
-A square binary matrix
+A square binary matrix with zero diagonal of class \code{mmmIndex}
 }
 \description{
 Create Movement Index Matrix

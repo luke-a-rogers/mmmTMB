@@ -2,20 +2,24 @@
 % Please edit documentation in R/wrangle.R
 \name{mmmWeights}
 \alias{mmmWeights}
-\title{Create Monthly Weighting for Annual Fishing Mortality}
+\title{Create Monthly Weighting for Fishing Mortality Rates}
 \usage{
-mmmWeights(tags, rate_step = "year")
+mmmWeights(tags, step = "month", nrows = 12L)
 }
 \arguments{
-\item{tags}{An \code{mmmTags} object. See \code{mmmTags()}.}
+\item{tags}{\code{\link[=mmmTMB]{mmmTMB()}} See \code{mmmTags()}.}
 
-\item{rate_step}{String. Currenlty implemented for \code{"month"} only.}
+\item{step}{\code{\link[=character]{character()}} Currently implemented for \code{"month"} only.
+Must equal the \code{step} element in \code{tags}.}
 }
 \value{
-A matrix of monthly weights for fishing mortality rates.
+A matrix of monthly weighting for fishing mortality rates.
 }
 \description{
-Create Monthly Weighting for Annual Fishing Mortality
+Create a weighting for the fishing mortality rate when the
+fishing mortality rate is recorded at a larger time step than the tag
+release and recovery time step. The weighting is based on tag recoveries
+at the tag time step.
 }
 \examples{
 
