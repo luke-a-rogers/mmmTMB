@@ -47,7 +47,50 @@ tags <- mmmTags(x = sable_released,
                 y = sable_recovered,
                 cols = cols,
                 step = "year",
-                limits = c("1979-01-01", "2018-12-31"),
-                days_liberty = 0)
+                limits = c("1979-01-01", "2018-12-31"))
+
+```
+
+## Load Rates Data
+```{r load-rates-data}
+# Use observational data
+# TODO: Switch to simulated data
+load("~/github/sablefishData/data/sable_capture_rate_region.rda")
+load("~/github/sablefishData/data/sable_report_ratio.rda")
+
+```
+
+## Create mmmRates Objects
+```{r create-mmmrates}
+# Prepare fishing mortality rates
+x <- sable_capture_rate_region
+cols <- list(date = "Year", area = "Region", rate = "Capture_Inst_Year")
+reps <- 1 # Update to 12 for monthly fit
+lims <- c(1979, 2018)
+mF <- mmmRates(x, cols, reps, lims, inst = TRUE)
+
+# Prepare tag reporting rates
+x <- dplyr::distinct(sable_report_ratio, Year, Region, Report_Ratio)
+cols <- list(date = "Year", area = "Region", rate = "Report_Ratio")
+reps <- 1 # Update to 12 for monthly fit
+lims <- c(1979, 2018)
+mL <- mmmRates(x, cols, reps, lims, inst = FALSE)
+
+```
+
+## Create mmmWeights Object
+```{r create-mmmweights}
+# Prepare monthly weighting of annual fishing rate by tag recoveries
+# TODO: Update for monthly fit
+
+# mW <- mmmWeights(tags, step = "month", nrows = 12L)
+
+```
+
+## Create Movement Index Matrix
+```{r create-mmmindex}
+# Three area neighbours
+mI <- mmmIndex(3)
+
 
 ```
