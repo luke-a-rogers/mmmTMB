@@ -5,8 +5,8 @@
 #'
 #' @param x [data.frame()] Tag release data. See details.
 #' @param y [data.frame()] Tag recovery data. See details.
-#' @param cols [list()] Named elements are character strings. See details.
-#' @param groups [list()] Named elements are vectors. See details.
+#' @param cols [list()] Named list of character strings. See details.
+#' @param groups [list()] Named list of atomic vectors. See details.
 #' @param step [character()] One of \code{year}, \code{month}, or
 #'   \code{day}.
 #' @param limits [character()] Start and end dates as `"%Y-%M-%D"`
@@ -387,161 +387,210 @@ mmmTags <- function (x,
 
 #' Prepare Rate Data
 #'
-#' @param x A data frame of named columns. See details.
-#' @param cols A list of named character elements. See details.
-#' @param lims An integer vector of length 2.
-#' @param areas A character vector of area names.
-#' @param reps An integer. Number of time steps per row.
-#' @param inst Logical. Is the rate an instantaneous rate?
+#' @description Prepare fishing mortality or tag reporting rate data prior
+#' to fitting a Markovian movement model via \code{mmmFit()}.
 #'
-#' @return
+#' @param x [data.frame()] Dates, areas, and rates data. See details.
+#' @param cols [list()] Named list of character strings. See details.
+#' @param reps [integer()] Number of tag time steps per rate time step (rows).
+#' @param lims [integer()] First and last date (implemented as integer for now).
+#' @param areas [list()] Named list of area values in index order. See details.
+#' @param inst [logical()] Is the rate an instantaneous rate?
+#'
+#' @details The rate time step may differ from tag time step, as long as
+#' the tag time step is a multiple of the rate time step.
+#'
+#' The \code{x} argument must be data frames that contains:
+#'
+#' \itemize{
+#'   \item An [integer()] column giving the date (integers for now).
+#'   \item An [atomic()] column giving the areas (see \code{areas} argument).
+#'   \item A [numeric()] column giving the rate for the given area and date.
+#' }
+#'
+#' The \code{cols} argument is a [list()] of named elements. The elements
+#'   must be [character()] string names of columns in \code{x}. There must
+#'   be one element for each required element name:
+#'   \itemize{
+#'     \item \code{date}: Date as an integer (usually year, month, or day).
+#'     \item \code{area}: Area as an atomic value.
+#'     \item \code{rate}: Numeric rate corresponding to the date and area.
+#'   }
+#'
+#' The \code{areas} argument is a [list()] of named [atomic()] elements.
+#' The elements must correspond to elements in the area column of \code{x}.
+#' The elements must be in the same order in which the areas are to be
+#' indexed. The \code{areas} argument is optional if areas are already
+#' indexed sequentially from one in \code{x}.
+#'
+#' @return A matrix of class \code{mmmRates}.
 #' @export
 #'
 #' @examples
-#' date <- rep(2010:2016, 3)
-#' area <- rep(c(1,2,3), each = 7)
-#' rate <- rep(seq(0.1, 0.5, length.out = 7), 3)
-#' x <- data.frame(date = date, area = area, rate = rate)
-#' r1 <- mmmRates(x)
+#'
+#' # One tag time step per row
+#' d <- rep(2010:2016, 3)
+#' a <- rep(c(1,2,3), each = 7)
+#' r <- rep(seq(0.1, 0.7, length.out = 7), 3)
+#' x <- data.frame(d = d, a = a, r = r)
+#' cols <- list(date = "d", area = "a", rate = "r")
+#' r1 <- mmmRates(x, cols)
+#'
+#' # Twelve tag time steps per row (e.g. monthly tags, yearly rates)
+#' d <- rep(2010:2016, 3)
+#' a <- rep(c(1,2,3), each = 7)
+#' r <- rep(seq(0.1, 0.7, length.out = 7), 3)
+#' x <- data.frame(d = d, a = a, r = r)
+#' cols <- list(date = "d", area = "a", rate = "r")
+#' reps <- 12
+#' lims <- c(2010, 2011)
+#' r2 <- mmmRates(x, cols, reps, lims, inst = TRUE)
 #'
 mmmRates <- function (x,
-                      cols = NULL,
+                      cols,
+                      reps = 1,
                       lims = NULL,
                       areas = NULL,
-                      reps = 1,
                       inst = FALSE) {
 
-  #--------------- Check arguments --------------------------------------------#
+  # Check arguments ------------------------------------------------------------
 
-  # TODO: Check all arguments
+  # Check arguments
   checkmate::assert_data_frame(x)
-  checkmate::assert_list(cols, unique = TRUE, null.ok = TRUE)
-  checkmate::assert_integerish(lims, len = 2, lower = 0, null.ok = TRUE)
+  checkmate::assert_list(cols, types = "character", unique = TRUE)
+  checkmate::assert_integerish(lims, len = 2, lower = 1, null.ok = TRUE)
   checkmate::assert_integerish(lims, any.missing = FALSE, null.ok = TRUE)
   checkmate::assert_list(areas, null.ok = TRUE)
   checkmate::assert_integerish(reps, lower = 1, len = 1, null.ok = FALSE)
   checkmate::assert_logical(inst, len = 1, null.ok = FALSE)
+  # Check columns
+  checkmate::assert_choice(cols$date, colnames(x))
+  checkmate::assert_choice(cols$area, colnames(x))
+  checkmate::assert_choice(cols$rate, colnames(x))
 
-  #--------------- Set default cols -------------------------------------------#
-
-  if (is.null(cols)) {
-    cols <- list(date = "date", area = "area", rate = "rate")
-  }
-
-  #--------------- Check required columns -------------------------------------#
-
-  checkmate::assert_true(is.element(cols$date, colnames(x)))
-  checkmate::assert_true(is.element(cols$area, colnames(x)))
-  checkmate::assert_true(is.element(cols$rate, colnames(x)))
-
-  #--------------- Rename columns ---------------------------------------------#
+  # Rename columns -------------------------------------------------------------
 
   colnames(x)[which(colnames(x) == cols$date)] <- "date"
   colnames(x)[which(colnames(x) == cols$area)] <- "area"
   colnames(x)[which(colnames(x) == cols$rate)] <- "rate"
 
-  #--------------- Define x ---------------------------------------------------#
+  # Define ---------------------------------------------------------------------
 
+  # Define x
   colnames_x <- c("date", "area", "rate")
   x <- x[, colnames_x]
+  # Date limits
+  if (is.null(lims)) {
+    lims <- c(min(x$date), max(x$date))
+  }
+  # Date indexes
+  x <- dplyr::filter(x, date >= lims[1], date <= lims[2])
+  x <- dplyr::mutate(x, date = date - lims[1] + 1L)
 
-  #--------------- Define date limits -----------------------------------------#
-
-  if (is.null(lims)) { lims <- c(min(x$date), max(x$date)) }
-
-  #--------------- Convert dates to index -------------------------------------#
-
-  x <- dplyr::filter(x, date >= lims[1], date <= lims[2]) %>%
-    dplyr::mutate(date = date - lims[1] + 1L)
-
-  #--------------- Check dates are sequential ---------------------------------#
+  # Check dates are sequential -------------------------------------------------
 
   # TODO: Check dates are sequential
+  cat("caution: check that dates are sequential not implemented")
 
-  #--------------- Convert areas to integers ----------------------------------#
+  # Convert areas to index -----------------------------------------------------
 
-  if (is.character(x$area)) {
+  # Indexed from one
+  if (!is.null(areas)) {
     x <- dplyr::mutate(x, area = mmmGroup(area, areas) + 1L)
   }
 
-  #--------------- Optionally replicate rows ----------------------------------#
+  # Optional transformations ---------------------------------------------------
 
-  x <- dplyr::slice(x, rep(dplyr::row_number(), each = reps)) %>%
+  # Replicate rows
+  x <- x %>%
+    dplyr::slice(rep(dplyr::row_number(), each = reps)) %>%
     dplyr::group_by(area) %>%
     dplyr::mutate(step = dplyr::row_number()) %>%
     dplyr::ungroup()
+  # Convert instantaneous rate
+  if (inst) {
+    x$rate <- x$rate / reps
+  }
 
-  #--------------- Optionally convert rate ------------------------------------#
+  # Convert to step by area matrix ---------------------------------------------
 
-  if (inst) { x$rate <- x$rate / reps }
-
-  #--------------- Convert to step by area matrix -----------------------------#
-
-  x <- dplyr::arrange(x, area) %>%
+  x <- x %>%
+    dplyr::arrange(area) %>%
     tidyr::pivot_wider(names_from = area, values_from = rate) %>%
     dplyr::arrange(step) %>%
     dplyr::select(-date, -step) %>%
     as.matrix()
-  return(x)
+
+  # Return ---------------------------------------------------------------------
+
+  return(structure(x, class = "mmmRates"))
 }
 
-#' Create Monthly Weighting for Annual Fishing Mortality
+#' Create Monthly Weighting for Fishing Mortality Rates
 #'
-#' @param tags An \code{mmmTags} object. See \code{mmmTags()}.
-#' @param rate_step String. Currenlty implemented for \code{"month"} only.
+#' @description Create a weighting for the fishing mortality rate when the
+#' fishing mortality rate is recorded at a larger time step than the tag
+#' release and recovery time step. The weighting is based on tag recoveries
+#' at the tag time step.
 #'
-#' @return A matrix of monthly weights for fishing mortality rates.
+#' @param tags [mmmTMB()] See \code{mmmTags()}.
+#' @param step [character()] Currently implemented for \code{"month"} only.
+#' Must equal the \code{step} element in \code{tags}.
+#'
+#' @return A matrix of monthly weighting for fishing mortality rates.
 #'
 #' @export
 #'
 #' @examples
 #'
-mmmWeights <- function (tags,
-                        rate_step = "year") {
+mmmWeights <- function (tags, step = "month", nrows = 12L) {
 
-  #--------------- Check arguments --------------------------------------------#
+  # Check arguments ------------------------------------------------------------
 
   checkmate::assert_class(tags, "mmmTags", null.ok = FALSE)
+  checkmate::assert_choice(step, c("month"))
+  checkmate::assert_choice(nrows, c(12))
 
-  #---------------- Unpack arguments ------------------------------------------#
+  # Unpack arguments -----------------------------------------------------------
 
   mR <- as.data.frame(tags$mR)
-  time_step <- tags$time_step
+  tag_step <- tags$step
 
-  #---------------- Create area-month data frame ------------------------------#
+  # Check time steps -----------------------------------------------------------
 
-  recover_area <- rep(c(seq_len(max(mR$recover_area) + 1L) - 1L), each = 12)
-  month_index <- rep(c(seq_len(12) - 1L), max(mR$recover_area) + 1L)
-  d <- data.frame(recover_area = recover_area, month_index = month_index)
-
-  #---------------- Create weights matrix -------------------------------------#
-
-  if (time_step == "month" & rate_step == "year") {
-    mW <- dplyr::mutate(mR, month_index = recover_step %% 12L) %>%
-      dplyr::select(recover_area, month_index) %>%
-      dplyr::group_by(recover_area, month_index) %>%
-      dplyr::mutate(count = dplyr::n()) %>%
-      dplyr::ungroup() %>%
-      dplyr::distinct(.keep_all = TRUE) %>%
-      dplyr::group_by(recover_area) %>%
-      dplyr::mutate(weight = count / sum(count)) %>%
-      dplyr::ungroup() %>%
-      dplyr::arrange(recover_area, month_index) %>%
-      dplyr::full_join(d, by = c("recover_area", "month_index")) %>%
-      dplyr::arrange(recover_area, month_index) %>%
-      tidyr::replace_na(list(weight = 0)) %>%
-      dplyr::select(-count) %>%
-      tidyr::pivot_wider(names_from = recover_area, values_from = weight) %>%
-      dplyr::select(-month_index) %>%
-      as.matrix()
-  } else {
-    mW <- NULL
-    cat("warning: currently implemented for tags$time_step == 'month' only \n")
+  if (step != tag_step) {
+    stop("weight step must equal tag step")
   }
 
-  #--------------- Return weights matrix --------------------------------------#
+  # Create the data frame ------------------------------------------------------
 
-  return(mW)
+  area <- rep(c(seq_len(max(mR$recover_area) + 1L) - 1L), each = nrows)
+  step <- rep(c(seq_len(nrows) - 1L), max(mR$recover_area) + 1L)
+  d <- data.frame(recover_area = area, weight_step = step)
+
+  # Create the weights matrix --------------------------------------------------
+
+  mW <- mR %>%
+    dplyr::mutate(weight_step = recover_step %% 12L) %>%
+    dplyr::select(recover_area, weight_step, count) %>%
+    dplyr::arrange(recover_area, weight_step) %>%
+    dplyr::group_by(recover_area, weight_step) %>%
+    dplyr::mutate(weight_count = sum(count)) %>%
+    dplyr::ungroup() %>%
+    dplyr::distinct(recover_area, weight_step, weight_count) %>%
+    dplyr::group_by(recover_area) %>%
+    dplyr::mutate(weight = weight_count / sum(weight_count)) %>%
+    dplyr::ungroup() %>%
+    dplyr::full_join(d, by = c("recover_area", "weight_step")) %>%
+    tidyr::replace_na(list(weight = 0)) %>%
+    dplyr::select(-weight_count) %>%
+    tidyr::pivot_wider(names_from = recover_area, values_from = weight) %>%
+    dplyr::select(-weight_step) %>%
+    as.matrix()
+
+  # Return the weights matrix --------------------------------------------------
+
+  return(structure(mW, class = "mmmWeights"))
 }
 
 
@@ -549,13 +598,13 @@ mmmWeights <- function (tags,
 #'
 #' @param n [integer()] Number of areas.
 #' @param pattern [integer()] One of \code{0}: full movement, or \code{1}:
-#'   direct movement between numerically sequential neighbours only
+#'   direct movement between numerically sequential neighbours only.
 #' @param allow [integer()] [matrix()] Each row indicates directional
-#'   movement between a pair of areas indexed from \code{1}.
+#'   movement between a pair of areas indexed from one.
 #' @param disallow [integer()] [matrix()] As for \code{allow}, but
 #'   specified movement is disallowed.
 #'
-#' @return A square binary matrix
+#' @return A square binary matrix with zero diagonal of class \code{mmmIndex}
 #' @export
 #'
 #' @examples
@@ -617,7 +666,7 @@ mmmIndex <- function (n, pattern = NULL, allow = NULL, disallow = NULL) {
     diag(m) <- 0L
   }
   # Return
-  return(m)
+  return(structure(m, class = "mmmIndex"))
 }
 
 #' Map Values to Groups
