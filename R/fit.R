@@ -22,35 +22,45 @@ NULL
 #'
 #' @details The [list()] argument \code{data} must contain
 #' \itemize{
-#'   \item{\code{tags} a list of class \code{mmmTags} (recommended: see
+#'   \item \code{tags} a list of class \code{mmmTags} (recommended: see
 #'     \code{mmmTags()}) OR both \code{mT} and \code{mR} integer matrices
 #'     of tag release and recovery counts, respectively, formatted as
-#'     described in [mmmTags()]}
-#'   \item{\code{mI} a square binary index matrix representing movement
+#'     described in [mmmTags()]
+#'   \item \code{mI} a square binary index matrix representing movement
 #'     between areas (from rows to columns). Ones represent movement that
 #'     is allowed from one time step to the next. Zeros off the diagonal
 #'     represent disallowed movement. Numbers on the diagonal are ignored
-#'     because self-movement is always allowed. See [mmmIndex()].}
+#'     because self-movement is always allowed. See [mmmIndex()].
 #' }
 #' The list argument \code{data} may optionally contain
 #' \itemize{
-#'   \item{\code{mL} a matrix of tag reporting rates (proportions)
+#'   \item \code{mL} a matrix of tag reporting rates (proportions)
 #'     in which the time step is given by the row and the area is
 #'     given by the column. Defaults to ones (full reporting). See
-#'     [mmmRates()].}
-#'   \item{\code{mW} a matrix of (monthly) weights for the fishing
+#'     [mmmRates()].
+#'   \item \code{mW} a matrix of (monthly) weights for the fishing
 #'     mortality rates in matrix \code{mF}. Defaults to ones (equal fishing
-#'     rates across calendar months). See [mmmWeights()].}
-#'   \item{\code{mF} a matrix of fishing mortality rates. Estimated as
+#'     rates across calendar months). See [mmmWeights()].
+#'   \item \code{mF} a matrix of fishing mortality rates. Estimated as
 #'     parameter(s) if missing. See \code{parameters} and \code{settings}.
-#'     See [mmmRates()].}
-#'   \item{\code{sM} scalar natural mortality rate. Estimated if missing.
-#'     See \code{parameters}.}
-#'   \item{\code{sH} scalar tag loss rate. Estimated if missing.
-#'     See \code{parameters}.}
-#'   \item{\code{sC} scalar initial tag loss rate (proportion). Estimated
-#'     if missing. See \code{parameters}.}
-#'
+#'     See [mmmRates()].
+#'   \item \code{sM} scalar natural mortality rate. Estimated if missing.
+#'     See \code{parameters}.
+#'   \item \code{sH} scalar tag loss rate. Estimated if missing.
+#'     See \code{parameters}.
+#'   \item \code{sC} scalar initial tag loss rate (proportion). Estimated
+#'     if missing. See \code{parameters}.
+#' }
+#' The list argument \code{parameters} may optionally contain the initial
+#' values
+#' \itemize{
+#'   \item \code{aP} an array of movement parameters. See TBD.
+#'   \item \code{mF} a matrix of fishing mortality rates. See \code{settings}.
+#'   \item \code{sM} scalar natural mortality rate.
+#'   \item \code{sH} scalar tag loss rate.
+#'   \item \code{sC} scalar initial tag loss rate (proportion).
+#'   \item \code{vB} vector fishing mortality bias (across areas).
+#'   \item \code{sD} scalar negative binomial dispersion.
 #' }
 #'
 #'
@@ -68,7 +78,7 @@ mmmFit <- function(data,
                    settings = mmmSet(),
                    control = mmmControl()) {
 
-  #---------------- Start the clock -------------------------------------------#
+  # Start the clock ------------------------------------------------------------
 
   tictoc::tic("mmmFit")
 
@@ -120,10 +130,10 @@ mmmFit <- function(data,
   checkmate::assert_integerish(settings$error_family, lower = 0, upper = 1)
   checkmate::assert_integerish(settings$error_family, any.missing = FALSE)
   # Check span liberty setting
-  checkmate::assert_integerish(settings$span_liberty, len = 2)
-  checkmate::assert_integerish(settings$span_liberty, any.missing = FALSE)
-  checkmate::assert_integerish(settings$span_liberty, lower = 0)
-  checkmate::assert_true(settings$span_liberty[1] < settings$time_varying[2])
+  checkmate::assert_numeric(settings$span_liberty, lower = 0, len = 2)
+  checkmate::assert_numeric(settings$span_liberty, any.missing = FALSE)
+  checkmate::assert_integerish(settings$span_liberty[1])
+  checkmate::assert_true(settings$span_liberty[1] < settings$span_liberty[2])
   # Check time varying setting
   checkmate::assert_integerish(settings$time_varying, len = 1)
   checkmate::assert_integerish(settings$time_varying, lower = 0, upper = 1)
@@ -161,7 +171,7 @@ mmmFit <- function(data,
   checkmate::assert_integerish(settings$openmp_cores, lower = 1)
   checkmate::assert_integerish(settings$openmp_cores, any.missing = FALSE)
 
-  #---------------- Set default settings --------------------------------------#
+  # Set default settings -------------------------------------------------------
 
   # Error family
   if (is.null(settings$error_family)) {
@@ -230,7 +240,7 @@ mmmFit <- function(data,
     openmp_cores <- settings$openmp_cores
   }
 
-  #---------------- Unpack required data --------------------------------------#
+  # Unpack required data -------------------------------------------------------
 
   # Tag matrices
   if (!is.null(data$tags)) {
@@ -262,24 +272,25 @@ mmmFit <- function(data,
   checkmate::assert_true(colnames(mR)[5] == "recover_area")
   checkmate::assert_true(colnames(mR)[6] == "count")
   # Check values
-  if (min(mT$release_step) > 0) cat("caution: time step not indexed from zero")
+  if (min(mT[, "release_step"]) > 0) {
+    cat("caution: time step not indexed from zero")
+  }
 
-  #---------------- Create index limits ---------------------------------------#
+  # Create index limits --------------------------------------------------------
 
   cat("creating index limits \n")
   # Set index limits
-  nt <- max(c(mT$release_step, mR$recover_step)) + 1L # Index from zero for C++
-  na <- max(c(mT$release_area, mR$recover_area)) + 1L # Index from zero for C++
-  ng <- max(c(mT$group, mR$group)) + 1L # Index from zero for C++
+  nt <- max(c(mT[, "release_step"], mR[, "recover_step"])) + 1L # From zero
+  na <- max(c(mT[, "release_area"], mR[, "recover_area"])) + 1L # From zero
+  ng <- max(c(mT[, "group"], mR[, "group"])) + 1L # Indexed from zero for C++
 
-  #---------------- Unpack index matrix ---------------------------------------#
+  # Unpack index matrix --------------------------------------------------------
 
   if (!is.null(data$mI)) {
     mI <- data$mI
     diag(mI) <- 0
   } else {
-    mI <- matrix(1L, nrow = na, ncol = na)
-    diag(mI) <- 0L
+    mI <- mmmIndex(na, 1)
   }
 
   #---------------- Check index matrix ----------------------------------------#
@@ -368,7 +379,7 @@ mmmFit <- function(data,
     cat("estimating mF; using fish_rate_by from settings \n")
   }
 
-  #---------------- Unpack arguments for tmb_data -----------------------------#
+  # Unpack arguments for tmb_data ----------------------------------------------
 
   # Tag reporting rate
   if (!is.null(data$mL)) {
@@ -379,8 +390,7 @@ mmmFit <- function(data,
   # Fishing rate weighting
   if (!is.null(data$mW)) {
     mW <- data$mW
-  }
-  else {
+  } else {
     mW <- matrix(1, nrow = 1L, ncol = 1L)
   }
 
@@ -440,14 +450,14 @@ mmmFit <- function(data,
 
   # Check data$tags for minimum steps at liberty
   if (!is.null(data$tags)) {
-    init_liberty <- data$tags$init_liberty
+    steps_liberty <- data$tags$steps_liberty
   } else {
-    init_liberty <- 1L
+    steps_liberty <- 1L
   }
   # Reconcile minimum steps at liberty
-  if (span_liberty[1] < init_liberty) {
-    span_liberty[1] <- init_liberty
-    cat(paste0("using initial time at liberty from mmmTags(): ", init_liberty))
+  if (span_liberty[1] < steps_liberty) {
+    span_liberty[1] <- steps_liberty
+    cat("using initial time at liberty from tags:", steps_liberty)
   }
 
   #---------------- Unpack arguments for tmb_parameters -----------------------#
@@ -464,7 +474,7 @@ mmmFit <- function(data,
   } else if (!is.null(parameters$mF)) {
     mF <- parameters$mF
   } else {
-    mF <- array(3L, dim = c(nft, nfa))
+    mF <- array(0.10, dim = c(nft, nfa))
   }
   # Scalar natural mortality
   if (!is.null(data$sM)) {
@@ -472,7 +482,7 @@ mmmFit <- function(data,
   } else if (!is.null(parameters$sM)) {
     sM <- parameters$sM
   } else {
-    sM <- 3L
+    sM <- 0.10
   }
   # Scalar tag loss rate
   if (!is.null(data$sH)) {
@@ -480,7 +490,7 @@ mmmFit <- function(data,
   } else if (!is.null(parameters$sH)) {
     sH <- parameters$sH
   } else {
-    sH <- 5
+    sH <- 0.02
   }
   # Scalar initial tag loss rate (proportion)
   if (!is.null(data$sC)) {
@@ -502,6 +512,7 @@ mmmFit <- function(data,
   } else {
     sD <- 1L
   }
+
   #---------------- Check arguments for tmb_parameters ------------------------#
 
   # Movement parameter array
