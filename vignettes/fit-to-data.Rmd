@@ -94,3 +94,54 @@ mI <- mmmIndex(3)
 
 
 ```
+
+## Define Remaining Data
+```{r create-remaining-data}
+# Remaining data
+sM <- 0.1 # Divide by 12 for monthly
+sH <- 0.02 # Divide by 12 for monthly
+sC <- 0.1
+
+```
+
+
+## Populate Data List
+```{r create-data-list}
+d <- list(
+  tags = tags,
+  mI = mI,
+  mL = mL,
+  # mW = mW,
+  mF = mF,
+  sM = sM,
+  sH = sH,
+  sC = sC
+)
+
+```
+
+## Populate Parameter List
+```{r create-parameter-list}
+p <- NULL
+
+
+```
+
+## Population Settings List
+```{r create-settings-list}
+s <- mmmSet(openmp_cores = parallel::detectCores() / 2)
+
+```
+
+## Fit To Data
+```{r fit-to-data}
+# Fit
+fit <- mmmFit(
+  data = d,
+  parameters = p,
+  random = NULL,
+  map = NULL,
+  settings = s
+)
+
+```
