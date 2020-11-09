@@ -443,7 +443,7 @@ mmmTags <- function (x,
 #' x <- data.frame(d = d, a = a, r = r)
 #' cols <- list(date = "d", area = "a", rate = "r")
 #' reps <- 12
-#' lims <- c(2010, 2011)
+#' lims <- c(2010, 2016)
 #' r2 <- mmmRates(x, cols, reps, lims, inst = TRUE)
 #'
 mmmRates <- function (x,
@@ -490,6 +490,7 @@ mmmRates <- function (x,
   # Check dates are sequential -------------------------------------------------
 
   # TODO: Check dates are sequential
+  x <- dplyr::arrange(x, area, date)
   cat("caution: check that dates are sequential not implemented")
 
   # Convert areas to index -----------------------------------------------------
@@ -501,12 +502,14 @@ mmmRates <- function (x,
 
   # Optional transformations ---------------------------------------------------
 
-  # Replicate rows
-  x <- x %>%
-    dplyr::slice(rep(dplyr::row_number(), each = reps)) %>%
-    dplyr::group_by(area) %>%
-    dplyr::mutate(step = dplyr::row_number()) %>%
-    dplyr::ungroup()
+  # Deprecated
+  # # Replicate rows
+  # x <- x %>%
+  #   dplyr::slice(rep(dplyr::row_number(), each = reps)) %>%
+  #   dplyr::group_by(area) %>%
+  #   dplyr::mutate(step = dplyr::row_number()) %>%
+  #   dplyr::ungroup()
+
   # Convert instantaneous rate
   if (inst) {
     x$rate <- x$rate / reps
@@ -517,8 +520,8 @@ mmmRates <- function (x,
   x <- x %>%
     dplyr::arrange(area) %>%
     tidyr::pivot_wider(names_from = area, values_from = rate) %>%
-    dplyr::arrange(step) %>%
-    dplyr::select(-date, -step) %>%
+    dplyr::arrange(date) %>%
+    dplyr::select(-date) %>%
     as.matrix()
 
   # Return ---------------------------------------------------------------------
