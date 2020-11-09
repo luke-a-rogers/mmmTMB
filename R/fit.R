@@ -6,37 +6,51 @@ NULL
 
 #' Fit a Markovian Movement Model
 #'
-#' @description Estimate movement rates
+#' @description Estimate movement rates from single-mark single-recapture
+#' tagging data.
 #'
-#' @param data A list of named data objects. See Details.
-#' @param parameters A list of initial parameter values. See Details.
-#' @param random A character vector of parameters to estimate as random effects.
-#' @param map A list of \code{map} values to override defaults.
+#' @param data [list()] Tag and other data. See Details.
+#' @param parameters [list()] Initial parameter values. See Details.
+#' @param random [character()] Names of parameters to estimate as
+#'   random effects.
+#' @param map [list()] Values to override \code{map} defaults.
 #'   See \code{TMB::MakeADFun()}.
-#' @param settings A list of values that define the model.
+#' @param settings [list()] Values that help define the model.
 #'   See \code{mmmSet()}.
-#' @param control A list of optimization control options to pass to
+#' @param control [list()] Optimization control options to pass to
 #'   \code{stats::nlminb()}. See \code{mmmControl()}.
 #'
-#' @details The list argument \code{data} must contain
+#' @details The [list()] argument \code{data} must contain
 #' \itemize{
 #'   \item{\code{tags} a list of class \code{mmmTags} (recommended: see
 #'     \code{mmmTags()}) OR both \code{mT} and \code{mR} integer matrices
 #'     of tag release and recovery counts, respectively, formatted as
-#'     described in \code{mmmTags()}}
+#'     described in [mmmTags()]}
 #'   \item{\code{mI} a square binary index matrix representing movement
 #'     between areas (from rows to columns). Ones represent movement that
 #'     is allowed from one time step to the next. Zeros off the diagonal
 #'     represent disallowed movement. Numbers on the diagonal are ignored
-#'     because self-movement is always allowed.}
+#'     because self-movement is always allowed. See [mmmIndex()].}
 #' }
 #' The list argument \code{data} may optionally contain
 #' \itemize{
 #'   \item{\code{mL} a matrix of tag reporting rates (proportions)
 #'     in which the time step is given by the row and the area is
-#'     given by the column. Defaults to ones (full reporting).}
-#'   \item{mW}
-#'   \item{mF}
+#'     given by the column. Defaults to ones (full reporting). See
+#'     [mmmRates()].}
+#'   \item{\code{mW} a matrix of (monthly) weights for the fishing
+#'     mortality rates in matrix \code{mF}. Defaults to ones (equal fishing
+#'     rates across calendar months). See [mmmWeights()].}
+#'   \item{\code{mF} a matrix of fishing mortality rates. Estimated as
+#'     parameter(s) if missing. See \code{parameters} and \code{settings}.
+#'     See [mmmRates()].}
+#'   \item{\code{sM} scalar natural mortality rate. Estimated if missing.
+#'     See \code{parameters}.}
+#'   \item{\code{sH} scalar tag loss rate. Estimated if missing.
+#'     See \code{parameters}.}
+#'   \item{\code{sC} scalar initial tag loss rate (proportion). Estimated
+#'     if missing. See \code{parameters}.}
+#'
 #' }
 #'
 #'
