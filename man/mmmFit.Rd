@@ -14,47 +14,61 @@ mmmFit(
 )
 }
 \arguments{
-\item{data}{A list of named data objects. See Details.}
+\item{data}{\code{\link[=list]{list()}} Tag and other data. See Details.}
 
-\item{parameters}{A list of initial parameter values. See Details.}
+\item{parameters}{\code{\link[=list]{list()}} Initial parameter values. See Details.}
 
-\item{random}{A character vector of parameters to estimate as random effects.}
+\item{random}{\code{\link[=character]{character()}} Names of parameters to estimate as
+random effects.}
 
-\item{map}{A list of \code{map} values to override defaults.
+\item{map}{\code{\link[=list]{list()}} Values to override \code{map} defaults.
 See \code{TMB::MakeADFun()}.}
 
-\item{settings}{A list of values that define the model.
+\item{settings}{\code{\link[=list]{list()}} Values that help define the model.
 See \code{mmmSet()}.}
 
-\item{control}{A list of optimization control options to pass to
+\item{control}{\code{\link[=list]{list()}} Optimization control options to pass to
 \code{stats::nlminb()}. See \code{mmmControl()}.}
 }
 \value{
 A list of class \code{mmmFit}.
 }
 \description{
-Estimate movement rates
+Estimate movement rates from single-mark single-recapture
+tagging data.
 }
 \details{
-The list argument \code{data} must contain
+The \code{\link[=list]{list()}} argument \code{data} must contain
 \itemize{
 \item{\code{tags} a list of class \code{mmmTags} (recommended: see
 \code{mmmTags()}) OR both \code{mT} and \code{mR} integer matrices
 of tag release and recovery counts, respectively, formatted as
-described in \code{mmmTags()}}
+described in \code{\link[=mmmTags]{mmmTags()}}}
 \item{\code{mI} a square binary index matrix representing movement
 between areas (from rows to columns). Ones represent movement that
 is allowed from one time step to the next. Zeros off the diagonal
 represent disallowed movement. Numbers on the diagonal are ignored
-because self-movement is always allowed.}
+because self-movement is always allowed. See \code{\link[=mmmIndex]{mmmIndex()}}.}
 }
 The list argument \code{data} may optionally contain
 \itemize{
 \item{\code{mL} a matrix of tag reporting rates (proportions)
 in which the time step is given by the row and the area is
-given by the column. Defaults to ones (full reporting).}
-\item{mW}
-\item{mF}
+given by the column. Defaults to ones (full reporting). See
+\code{\link[=mmmRates]{mmmRates()}}.}
+\item{\code{mW} a matrix of (monthly) weights for the fishing
+mortality rates in matrix \code{mF}. Defaults to ones (equal fishing
+rates across calendar months). See \code{\link[=mmmWeights]{mmmWeights()}}.}
+\item{\code{mF} a matrix of fishing mortality rates. Estimated as
+parameter(s) if missing. See \code{parameters} and \code{settings}.
+See \code{\link[=mmmRates]{mmmRates()}}.}
+\item{\code{sM} scalar natural mortality rate. Estimated if missing.
+See \code{parameters}.}
+\item{\code{sH} scalar tag loss rate. Estimated if missing.
+See \code{parameters}.}
+\item{\code{sC} scalar initial tag loss rate (proportion). Estimated
+if missing. See \code{parameters}.}
+
 }
 }
 \examples{
