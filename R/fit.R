@@ -335,11 +335,12 @@ mmmFit <- function(data,
     nfa <- ncol(data$mF)
     vft <- rep(seq_len(nft) - 1L, each = ceiling(nt / nft))[seq_len(nt)]
     vfa <- rep(seq_len(nfa) - 1L, each = ceiling(na / nfa))[seq_len(na)]
+    cat("using", ceiling(nt / nft), "tag steps per mF row\n")
     if (nt %% nft) {
       cat("warning: nft does not divide nt evenly \n")
     }
     if (!is.element(nfa, c(1, na))) {
-      cat("warning: nfa must equal 1 or na \n")
+      stop("nfa must equal 1 or na \n")
     }
     cat("using mF from data and ignoring fish_rate_by in settings \n")
   } else if (!is.null(parameters$mF)) {
@@ -347,11 +348,12 @@ mmmFit <- function(data,
     nfa <- ncol(parameters$mF)
     vft <- rep(seq_len(nft) - 1L, each = ceiling(nt / nft))[seq_len(nt)]
     vfa <- rep(seq_len(nfa) - 1L, each = ceiling(na / nfa))[seq_len(na)]
+    cat("using", ceiling(nt / nft), "tag steps per mF row")
     if (nt %% nft) {
       cat("warning: nft does not divide nt evenly \n")
     }
     if (!is.element(nfa, c(1, na))) {
-      cat("warning: nfa must equal 1 or na \n")
+      stop("nfa must equal 1 or na \n")
     }
     cat("initial mF from parameters; ignoring fish_rate_by in settings \n")
   } else {
@@ -583,30 +585,29 @@ mmmFit <- function(data,
     tmb_random <- random
   }
 
-  #---------------- Create tmb_map --------------------------------------------#
+  # Create tmb_map -------------------------------------------------------------
 
   cat("creating tmb_map \n")
   tmb_map <- list()
   # Default
-  if (!is.null(data$mF)) { tmb_map <- c(tmb_map, logit_exp_neg_tmF = NA) }
-  if (!is.null(data$sM)) { tmb_map <- c(tmb_map, logit_exp_neg_sM = NA) }
-  if (!is.null(data$sH)) { tmb_map <- c(tmb_map, logit_exp_neg_sH = NA) }
-  if (!is.null(data$sC)) { tmb_map <- c(tmb_map, logit_sA = NA) }
-  if (!is.null(data$vB)) { tmb_map <- c(tmb_map, log_vB = NA) }
-  if (error_family == 0) { tmb_map <- c(tmb_map, log_sD = NA)}
+  if (!is.null(data$mF)) tmb_map$logit_exp_neg_tmF <- factor(rep(NA, nft * nfa))
+  if (!is.null(data$sM)) tmb_map$logit_exp_neg_sM <- as.factor(NA)
+  if (!is.null(data$sH)) tmb_map$logit_exp_neg_sH <- as.factor(NA)
+  if (!is.null(data$sC)) tmb_map$logit_sA <- as.factor(NA)
+  if (error_family == 0) tmb_map$log_sD <- as.factor(NA)
   # User defined
-  if (!is.null(map$mF)) { tmb_map$logit_exp_neg_tmF <- t(map$mF) }
-  if (!is.null(map$sM)) { tmb_map$logit_exp_neg_sM <- t(map$sM) }
-  if (!is.null(map$sH)) { tmb_map$logit_exp_neg_sH <- t(map$sH) }
-  if (!is.null(map$sC)) { tmb_map$logit_sA <- map$sC }
-  if (!is.null(map$vB)) { tmb_map$log_vB <- map$vB }
+  if (!is.null(map$mF)) tmb_map$logit_exp_neg_tmF <- t(map$mF)
+  if (!is.null(map$sM)) tmb_map$logit_exp_neg_sM <- t(map$sM)
+  if (!is.null(map$sH)) tmb_map$logit_exp_neg_sH <- t(map$sH)
+  if (!is.null(map$sC)) tmb_map$logit_sA <- map$sC
+  if (!is.null(map$vB)) tmb_map$log_vB <- map$vB
 
-  #---------------- Set the number of OpenMP cores ----------------------------#
+  # Set OpenMP cores -----------------------------------------------------------
 
-  cat(paste0("using ", openmp_cores, " openmp cores"))
+  cat("using", openmp_cores, "openmp cores\n")
   TMB::openmp(n = openmp_cores)
 
-  #---------------- Create the ADFun object -----------------------------------#
+  # Create ADFun object --------------------------------------------------------
 
   tictoc::tic("adfun")
   cat("creating adfun \n")
@@ -617,7 +618,7 @@ mmmFit <- function(data,
                           DLL = "mmmTMB")
   tictoc::toc()
 
-  #---------------- Optimize the objective function ---------------------------#
+  # Optimize the objective function --------------------------------------------
 
   tictoc::tic("nlminb")
   cat("\noptimizing objective\n")
@@ -633,7 +634,7 @@ mmmFit <- function(data,
   # Iterate optimization
   if (nlminb_loops > 0) {
     cat("\nrunning extra nlminb loops \n")
-    for (i in seq(2, nlminb_loops, length = max(0, nlminb_loops - 1))) {
+    for (i in seq_len(nlminb_loops)) {
       cat(paste0("running nlminb loop #", i, "\n"))
       tmp <- model[c("iterations", "evaluations")]
       model <- stats::nlminb(
@@ -671,80 +672,80 @@ mmmFit <- function(data,
 
   #---------------- Compute goodness of fit -----------------------------------#
 
-  tictoc::tic("goodness")
-  cat("computing goodness of fit\n")
-  # TODO
+  # tictoc::tic("goodness")
+  # cat("computing goodness of fit\n")
+  # # TODO
+  #
+  #
+  #
+  #
+  #
+  # tictoc::toc()
 
-
-
-
-
-  tictoc::toc()
-
-  #---------------- Compute results -------------------------------------------#
-
-  tictoc::tic("results")
-  cat("computing results")
-  # TODO: Update results
-  # Use result_steps here
-  # TODO: Continue from here
-
-  #---------------- Create movement probability results -----------------------#
-
-  tictoc::tic("computing movement estimates and std errs")
-  pars <- subset_by_name(model$par, "movement_parameters_3d")
-  if (time_process == 0) {
-    covs <- subset_by_name(sd_report$cov.fixed, "movement_parameters_3d")
-  } else {
-    # warning("Parameters are a random effect: Figure out where to access covs")
-    covs <- subset_by_name(sd_report$cov.fixed, "movement_parameters_3d")
-  }
-  mpr_df <- create_movement_probability_results(
-    pars = pars,
-    covs = covs,
-    dims = c(nv, np, nt, na, ng),
-    tp_2d = template_2d,
-    result_units = result_units,
-    n_draws = 1000)
-  tictoc::toc()
-
-  #---------------- Create natural mortality results --------------------------#
-
-  nmr_mat <- summary(sd_report)["natural_mortality_results", , drop = FALSE]
-  rownames(nmr_mat) <- NULL
-  colnames(nmr_mat) <- c("Estimate", "SE")
-  nmr_df <- as.data.frame(nmr_mat)
-
-  #---------------- Create capture bias results -------------------------------#
-
-  cbr_ind <- which(rownames(summary(sd_report)) == "capture_bias_2d")
-  cbr_mat <- matrix(0, nrow = na * ng, ncol = 4)
-  cbr_mat[, 1] <- rep(seq_len(ng), each = na)
-  cbr_mat[, 2] <- rep(seq_len(na), ng)
-  cbr_mat[, 3:4] <- summary(sd_report)[cbr_ind, ]
-  colnames(cbr_mat) <- c("Class", "Area", "Estimate", "SE")
-  cbr_df <- as.data.frame(cbr_mat)
-
-  #---------------- Create dispersion results ---------------------------------#
-
-  dsp_mat <- summary(sd_report)["dispersion", , drop = FALSE]
-  rownames(dsp_mat) <- NULL
-  colnames(dsp_mat) <- c("Estimate", "SE")
-  dsp_df <- as.data.frame(dsp_mat)
-
-  #---------------- Create results list ---------------------------------------#
-
-  results_list <- list(movement_probability_results = mpr_df,
-                       natural_mortality_results = nmr_df,
-                       capture_bias = cbr_df,
-                       dispersion = dsp_df)
-
-  tictoc::toc()
-
-  #----------------------------------------------------------------------------#
-
-  tictoc::toc()
-  # TODO: Fix before here
+  # #---------------- Compute results -------------------------------------------#
+  #
+  # tictoc::tic("results")
+  # cat("computing results")
+  # # TODO: Update results
+  # # Use result_steps here
+  # # TODO: Continue from here
+  #
+  # #---------------- Create movement probability results -----------------------#
+  #
+  # tictoc::tic("computing movement estimates and std errs")
+  # pars <- subset_by_name(model$par, "movement_parameters_3d")
+  # if (time_process == 0) {
+  #   covs <- subset_by_name(sd_report$cov.fixed, "movement_parameters_3d")
+  # } else {
+  #   # warning("Parameters are a random effect: Figure out where to access covs")
+  #   covs <- subset_by_name(sd_report$cov.fixed, "movement_parameters_3d")
+  # }
+  # mpr_df <- create_movement_probability_results(
+  #   pars = pars,
+  #   covs = covs,
+  #   dims = c(nv, np, nt, na, ng),
+  #   tp_2d = template_2d,
+  #   result_units = result_units,
+  #   n_draws = 1000)
+  # tictoc::toc()
+  #
+  # #---------------- Create natural mortality results --------------------------#
+  #
+  # nmr_mat <- summary(sd_report)["natural_mortality_results", , drop = FALSE]
+  # rownames(nmr_mat) <- NULL
+  # colnames(nmr_mat) <- c("Estimate", "SE")
+  # nmr_df <- as.data.frame(nmr_mat)
+  #
+  # #---------------- Create capture bias results -------------------------------#
+  #
+  # cbr_ind <- which(rownames(summary(sd_report)) == "capture_bias_2d")
+  # cbr_mat <- matrix(0, nrow = na * ng, ncol = 4)
+  # cbr_mat[, 1] <- rep(seq_len(ng), each = na)
+  # cbr_mat[, 2] <- rep(seq_len(na), ng)
+  # cbr_mat[, 3:4] <- summary(sd_report)[cbr_ind, ]
+  # colnames(cbr_mat) <- c("Class", "Area", "Estimate", "SE")
+  # cbr_df <- as.data.frame(cbr_mat)
+  #
+  # #---------------- Create dispersion results ---------------------------------#
+  #
+  # dsp_mat <- summary(sd_report)["dispersion", , drop = FALSE]
+  # rownames(dsp_mat) <- NULL
+  # colnames(dsp_mat) <- c("Estimate", "SE")
+  # dsp_df <- as.data.frame(dsp_mat)
+  #
+  # #---------------- Create results list ---------------------------------------#
+  #
+  # results_list <- list(movement_probability_results = mpr_df,
+  #                      natural_mortality_results = nmr_df,
+  #                      capture_bias = cbr_df,
+  #                      dispersion = dsp_df)
+  #
+  # tictoc::toc()
+  #
+  # #----------------------------------------------------------------------------#
+  #
+  # tictoc::toc()
+  # # TODO: Fix before here
 
   #---------------- Stop the clock --------------------------------------------#
 
@@ -752,23 +753,23 @@ mmmFit <- function(data,
 
   #---------------- Return an mmmFit object -----------------------------------#
 
-  cat("\nreturning mmmTMB object\n")
-  structure(list(
-    data        = data_list,
-    parameters  = parameters_list,
-    settings    = settings,
-    random      = random,
-    map         = map_list,
-    control     = control,
-    initial     = initial_list,
-    results     = results_list,
-    sd_report   = sd_report,
-    convergence = conv_list,
-    goodness    = goodness_list,
-    adfun       = adfun,
-    model       = model,
-    mgc         = mgc),
-    class       = c("mmmFit"))
+  cat("\nreturning mmmFit object\n")
+  # structure(list(
+  #   data        = data_list,
+  #   parameters  = parameters_list,
+  #   settings    = settings,
+  #   random      = random,
+  #   map         = map_list,
+  #   control     = control,
+  #   initial     = initial_list,
+  #   results     = results_list,
+  #   sd_report   = sd_report,
+  #   convergence = conv_list,
+  #   goodness    = goodness_list,
+  #   adfun       = adfun,
+  #   model       = model,
+  #   mgc         = mgc),
+  #   class       = c("mmmFit"))
 }
 
 #' Settings for \code{mmmFit()}
