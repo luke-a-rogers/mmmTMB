@@ -70,7 +70,7 @@ r <- rep(seq(0.1, 0.7, length.out = 7), 3)
 x <- data.frame(d = d, a = a, r = r)
 cols <- list(date = "d", area = "a", rate = "r")
 reps <- 12
-lims <- c(2010, 2011)
+lims <- c(2010, 2016)
 r2 <- mmmRates(x, cols, reps, lims, inst = TRUE)
 
 }
