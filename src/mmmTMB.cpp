@@ -220,8 +220,6 @@ Type objective_function<Type>::operator() ()
                         aR(ra, rt, mg, ma, mt),
                         aRhat(ra, rt, mg, ma, mt),
                         true);
-                      // Simulate {aR(ra, rt, mg, ma, mt) =
-                      // rpois(aRhat(ra, rt, mg, ma, mt));}
                       break;
                     case nbinom1_family:
                       jnll += -dnbinom_robust(
