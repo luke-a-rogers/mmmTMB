@@ -90,7 +90,7 @@ mL <- mmmRates(x, cols, reps, lims, inst = FALSE)
 ## Create Movement Index Matrix
 ```{r create-mmmindex}
 # Three area neighbours
-mI <- mmmIndex(3)
+mI <- mmmIndex(3, pattern = 0)
 
 
 ```
@@ -129,9 +129,20 @@ p <- NULL
 
 ## Population Settings List
 ```{r create-settings-list}
-s <- mmmSet(openmp_cores = parallel::detectCores() / 2)
+s <- mmmSet(
+  error_family = 0, 
+  nlminb_loops = 1,
+  newton_steps = 1,
+  openmp_cores = 6)
+
+s <- mmmSet(
+  error_family = 1, 
+  nlminb_loops = 0,
+  newton_steps = 0,
+  openmp_cores = 6)
 
 ```
+
 
 ## Fit To Data
 ```{r fit-to-data}
@@ -141,7 +152,8 @@ fit <- mmmFit(
   parameters = p,
   random = NULL,
   map = NULL,
-  settings = s
+  settings = s,
+  control = mmmControl(trace = 25)
 )
 
 ```
