@@ -131,14 +131,16 @@ p <- NULL
 ```{r create-settings-list}
 s <- mmmSet(
   error_family = 0, 
-  nlminb_loops = 1,
-  newton_steps = 1,
+  span_liberty = c(0, 40),
+  nlminb_loops = 5,
+  newton_steps = 5,
   openmp_cores = 6)
 
 s <- mmmSet(
-  error_family = 1, 
-  nlminb_loops = 0,
-  newton_steps = 0,
+  error_family = 1,
+  span_liberty = c(0, 40),
+  nlminb_loops = 5,
+  newton_steps = 5,
   openmp_cores = 6)
 
 ```
@@ -153,7 +155,7 @@ fit <- mmmFit(
   random = NULL,
   map = NULL,
   settings = s,
-  control = mmmControl(trace = 25)
+  control = mmmControl(trace = 5)
 )
 
 ```
