@@ -1,12 +1,12 @@
 #include <TMB.hpp>
 
-// ---------------- Methods called by the model --------------------------------
+// Methods called by the model -------------------------------------------------
 
 template <class Type>
 array<Type> create_aK(array<Type> ta, matrix<int> tm) {
   // Initialize values
   int na = tm.rows(); // Matrix tm has rows = na, and cols = na
-  int npt = ta.dim(1); //  Array ta has dim = c(np, npt, ng)
+  int npt = ta.dim(1); // Array ta has dim = c(np, npt, ng)
   int ng = ta.dim(2);
   int cp_num; // Current parameter in the numerator (?)
   int cp_den; // Current parameter in the denominator (?)
@@ -48,7 +48,7 @@ array<Type> create_aK(array<Type> ta, matrix<int> tm) {
   return k;
 }
 
-// ---------------- Enumerate valid constants ----------------------------------
+// Enumerate valid constants ---------------------------------------------------
 
 enum valid_family {
   poisson_family = 0,
@@ -60,12 +60,12 @@ enum valid_process {
   rw_process = 1
 };
 
-// ---------------- Model definition -------------------------------------------
+// Model definition ------------------------------------------------------------
 
 template<class Type>
 Type objective_function<Type>::operator() ()
 {
-  // -------------- Data -------------------------------------------------------
+  // Data ----------------------------------------------------------------------
 
   DATA_IMATRIX(tmT); // Tag release integer matrix (transpose)
   DATA_IMATRIX(tmR); // Tag recover integer matrix (transpose)
@@ -98,7 +98,7 @@ Type objective_function<Type>::operator() ()
   DATA_IVECTOR(vwt); // Time step for fishing rate weight
   DATA_IVECTOR(vwa); // Area for fishing rate weight
 
-  // -------------- Parameters -------------------------------------------------
+  // Parameters ----------------------------------------------------------------
 
   PARAMETER_ARRAY(taP); // Movement parameters dim = c(np, npt, ng)
   PARAMETER_ARRAY(logit_exp_neg_tmF); // Fishing mortality
@@ -108,15 +108,15 @@ Type objective_function<Type>::operator() ()
   PARAMETER_VECTOR(log_vB); // Fishing bias by group
   PARAMETER(log_sD); // Negative binomial dispersion
 
-  // -------------- Initialize the nll -----------------------------------------
+  // Initialize the nll --------------------------------------------------------
 
   parallel_accumulator<Type> jnll(this);
   // Type jnll = 0;
   Type re_nll = 0;
 
-  // -------------- Instantiate arrays -----------------------------------------
+  // Instantiate arrays --------------------------------------------------------
 
-  // Arrays (3D+) use column-major indexing in TMB (first index fastest)
+  // Matrices and arrays use column-major indexing in TMB (first index fastest)
   array<Type> aR(na, nt, ng, na, nt); // Tag recoveries
   array<Type> aN(na, nt, ng, na, nt); // Tag abundance (predicted)
   array<Type> aK(na, na, npt, ng); // Movement rates
@@ -125,7 +125,7 @@ Type objective_function<Type>::operator() ()
   matrix<Type> tmF(nfa, nft); // Fishing mortality rates
   vector<Type> vB(ng); // Fishing mortality bias
 
-  // -------------- Initialize arrays ------------------------------------------
+  // Initialize arrays ---------------------------------------------------------
 
   aR.setZero(); // Initialize to zero
   aN.setZero(); // Initialize to zero
@@ -133,12 +133,12 @@ Type objective_function<Type>::operator() ()
   aS.setZero(); // Initialize to zero
   aRhat.setZero(); // Initialize to zero
 
-  // -------------- Inverse transform parameters -------------------------------
+  // Inverse transform parameters ----------------------------------------------
 
   // Fishing mortality
   for (int ct = 0; ct < nt; ct++) {
     for (int ca = 0; ca < na; ca++) {
-      tmF(vfa(ca), vft(ct)) = -log(invlogit(logit_exp_neg_tmF(vfa(ca), vft(ct))));
+      tmF(vfa(ca),vft(ct)) = -log(invlogit(logit_exp_neg_tmF(vfa(ca),vft(ct))));
     }
   }
   Type sM = -log(invlogit(logit_exp_neg_sM)); // Natural mortality
@@ -147,32 +147,32 @@ Type objective_function<Type>::operator() ()
   vB = exp(log_vB); // Fishing bias
   Type sD = exp(log_sD); // Negative binomial dispersion
 
-  // -------------- Compute constants ------------------------------------------
+  // Compute constants ---------------------------------------------------------
 
   int tmTcols = tmT.cols();
   int tmRcols = tmR.cols();
 
-  // -------------- Populate tag abundances with releases ----------------------
+  // Populate tag abundances with releases -------------------------------------
 
   for (int i = 0; i < tmTcols; i++) {
     aN(tmT(1, i), tmT(0, i), tmT(2, i), tmT(1, i), tmT(0, i)) = sA * tmT(3, i);
   }
 
-  // -------------- Populate tag recoveries ------------------------------------
+  // Populate tag recoveries ---------------------------------------------------
 
   for (int i = 0; i < tmRcols; i++) {
     aR(tmR(4, i), tmR(3, i), tmR(2, i), tmR(1, i), tmR(0, i)) = tmR(5, i);
   }
 
-  // -------------- Populate movement rates ------------------------------------
+  // Populate movement rates ---------------------------------------------------
 
   aK = create_aK(taP, tmI);
 
-  // -------------- Compute the random effects nll -----------------------------
+  // Compute the random effects nll --------------------------------------------
 
 
 
-  // -------------- Populate the survival array --------------------------------
+  // Populate the survival array -----------------------------------------------
 
   for (int mg = 0; mg < ng; mg++) {
     for (int ct = 0; ct < nt; ct++) {
@@ -183,9 +183,13 @@ Type objective_function<Type>::operator() ()
     }
   }
 
+  // Initialize rt_min and rt_max ----------------------------------------------
+
+  int rt_min = 0;
+  int rt_max = nt;
+
   // -------------- Predict recoveries -----------------------------------------
 
-  // TODO: Add simulation blocks
   for (int mt = 0; mt < nt; mt++) {
     for (int ma = 0; ma < na; ma++) {
       for (int mg = 0; mg < ng; mg++) {
@@ -200,38 +204,37 @@ Type objective_function<Type>::operator() ()
               }
             }
           }
+          // Compute rt_min and rt_max from span_liberty
+          rt_min = mt + span_liberty(0);
+          rt_max = mt + span_liberty(1) + 1;
+          if (rt_max > nt) { rt_max = nt; }
           // Compute predicted recoveries and jnll
-          for (int rt = mt; rt < nt; rt++) {
-            // Was the recapture time within the span at liberty?
-            if (rt > (mt + span_liberty(1) - Type(1))) {
-              if (rt < (mt + span_liberty(2) + Type(1))) {
-                for (int ra = 0; ra < na; ra++) {
-                  // Populate the predicted recovery array
-                  aRhat(ra, rt, mg, ma, mt) = aN(ra, rt, mg, ma, mt) *
-                    (Type(1) - exp(-vB(mg) * tmF(vfa(ra), vft(rt)) *
-                    tmW(vwa(ra), vwt(rt)))) *
-                    tmL(vla(ra), vlt(rt));
-                  // Shelter error distribution from mean zero
-                  if (aRhat(ra, rt, mg, ma, mt) > 0) {
-                    // Calculate the joint negative log likelihood
-                    switch (error_family) {
-                    case poisson_family:
-                      jnll += -dpois(
-                        aR(ra, rt, mg, ma, mt),
-                        aRhat(ra, rt, mg, ma, mt),
-                        true);
-                      break;
-                    case nbinom1_family:
-                      jnll += -dnbinom_robust(
-                        aR(ra, rt, mg, ma, mt),
-                        log(aRhat(ra, rt, mg, ma, mt)),
-                        log(aRhat(ra, rt, mg, ma, mt)) + log_sD,
-                        true);
-                      break;
-                    default:
-                      error("error_family not implemented");
-                    }
-                  }
+          for (int rt = rt_min; rt < rt_max; rt++) {
+            for (int ra = 0; ra < na; ra++) {
+              // Populate the predicted recovery array
+              aRhat(ra, rt, mg, ma, mt) = aN(ra, rt, mg, ma, mt) *
+                (Type(1) - exp(-vB(mg) * tmF(vfa(ra), vft(rt)) *
+                tmW(vwa(ra), vwt(rt)))) *
+                tmL(vla(ra), vlt(rt));
+              // Shelter error distribution from mean zero
+              if (aRhat(ra, rt, mg, ma, mt) > 0) {
+                // Calculate the joint negative log likelihood
+                switch (error_family) {
+                case poisson_family:
+                  jnll -= dpois(
+                    aR(ra, rt, mg, ma, mt),
+                    aRhat(ra, rt, mg, ma, mt),
+                    true);
+                  break;
+                case nbinom1_family:
+                  jnll -= dnbinom_robust(
+                    aR(ra, rt, mg, ma, mt),
+                    log(aRhat(ra, rt, mg, ma, mt)),
+                    log(aRhat(ra, rt, mg, ma, mt)) + log_sD,
+                    true);
+                  break;
+                default:
+                  error("error_family not implemented");
                 }
               }
             }
@@ -241,21 +244,17 @@ Type objective_function<Type>::operator() ()
     }
   }
 
-  // ------------- AD Report ---------------------------------------------------
+  // AD Report -----------------------------------------------------------------
 
   ADREPORT(sD); // Negative binomial dispersion
   ADREPORT(vB); // Fishing mortality bias
 
-  // ------------- Report ------------------------------------------------------
+  // Report --------------------------------------------------------------------
 
   // REPORT(taP);
   // REPORT(aK);
 
-  // ------------- Report simulation -------------------------------------------
-
-  // SIMULATE {REPORT(aR);}
-
-  // ------------- Return the nll ----------------------------------------------
+  // Return the nll ------------------------------------------------------------
 
   return jnll;
 }
