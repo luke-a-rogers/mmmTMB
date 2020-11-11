@@ -6,7 +6,7 @@
 \usage{
 mmmSet(
   error_family = c(nb1 = 1, poisson = 0),
-  span_liberty = c(1, Inf),
+  span_liberty = c(1, 1000),
   time_varying = 0,
   time_process = c(none = 0, rw = 1),
   cycle_length = 0,
