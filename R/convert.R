@@ -197,7 +197,7 @@ create_movement_parameters.array <- function (x,
 
   # Check arguments
   checkmate::assert_array(x, d = 4, any.missing = FALSE)
-  checkmate::assert_null(d)
+  checkmate::assert_matrix(m, mode = "integerish", any.missing = FALSE)
   checkmate::assert_logical(t, len = 1L, any.missing = FALSE)
   # Initialize index limits
   np <- sum(m)
