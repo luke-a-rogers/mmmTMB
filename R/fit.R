@@ -130,9 +130,8 @@ mmmFit <- function(data,
   checkmate::assert_integerish(settings$error_family, lower = 0, upper = 1)
   checkmate::assert_integerish(settings$error_family, any.missing = FALSE)
   # Check span liberty setting
-  checkmate::assert_numeric(settings$span_liberty, lower = 0, len = 2)
-  checkmate::assert_numeric(settings$span_liberty, any.missing = FALSE)
-  checkmate::assert_integerish(settings$span_liberty[1])
+  checkmate::assert_integerish(settings$span_liberty, lower = 0, len = 2)
+  checkmate::assert_integerish(settings$span_liberty, any.missing = FALSE)
   checkmate::assert_true(settings$span_liberty[1] < settings$span_liberty[2])
   # Check time varying setting
   checkmate::assert_integerish(settings$time_varying, len = 1)
@@ -171,6 +170,50 @@ mmmFit <- function(data,
   checkmate::assert_integerish(settings$openmp_cores, lower = 1)
   checkmate::assert_integerish(settings$openmp_cores, any.missing = FALSE)
 
+  # Unpack required data -------------------------------------------------------
+
+  # Tag matrices
+  if (!is.null(data$tags)) {
+    mT <- data$tags$mT
+    mR <- data$tags$mR
+  } else {
+    mT <- data$mT
+    mR <- data$mR
+  }
+
+  #---------------- Check required data ---------------------------------------#
+
+  # Tag releases
+  checkmate::assert_matrix(mT, mode = "integerish", any.missing = FALSE)
+  checkmate::assert_matrix(mT, ncols = 4, null.ok = FALSE)
+  checkmate::assert_numeric(mT, lower = 0, null.ok = FALSE)
+  checkmate::assert_true(colnames(mT)[1] == "release_step")
+  checkmate::assert_true(colnames(mT)[2] == "release_area")
+  checkmate::assert_true(colnames(mT)[3] == "group")
+  checkmate::assert_true(colnames(mT)[4] == "count")
+  # Tag recoveries
+  checkmate::assert_matrix(mR, mode = "integerish", any.missing = FALSE)
+  checkmate::assert_matrix(mR, ncols = 6, null.ok = FALSE)
+  checkmate::assert_numeric(mR, lower = 0, null.ok = FALSE)
+  checkmate::assert_true(colnames(mR)[1] == "release_step")
+  checkmate::assert_true(colnames(mR)[2] == "release_area")
+  checkmate::assert_true(colnames(mR)[3] == "group")
+  checkmate::assert_true(colnames(mR)[4] == "recover_step")
+  checkmate::assert_true(colnames(mR)[5] == "recover_area")
+  checkmate::assert_true(colnames(mR)[6] == "count")
+  # Check values
+  if (min(mT[, "release_step"]) > 0) {
+    cat("caution: time step not indexed from zero")
+  }
+
+  # Create index limits --------------------------------------------------------
+
+  cat("creating index limits \n")
+  # Set index limits
+  nt <- max(c(mT[, "release_step"], mR[, "recover_step"])) + 1L # From zero
+  na <- max(c(mT[, "release_area"], mR[, "recover_area"])) + 1L # From zero
+  ng <- max(c(mT[, "group"], mR[, "group"])) + 1L # Indexed from zero for C++
+
   # Set default settings -------------------------------------------------------
 
   # Error family
@@ -181,9 +224,11 @@ mmmFit <- function(data,
   }
   # Span liberty
   if (is.null(settings$span_liberty)) {
-    span_liberty <- c(1, Inf)
+    span_liberty <- c(1, nt)
   } else {
-    span_liberty <- settings$span_liberty
+    span_liberty <- integer(2)
+    span_liberty[1] <- min(settings$span_liberty[1], nt - 1L)
+    span_liberty[2] <- min(settings$span_liberty[2], nt)
   }
   # Time varying
   if (is.null(settings$time_varying)) {
@@ -239,50 +284,6 @@ mmmFit <- function(data,
   } else {
     openmp_cores <- settings$openmp_cores
   }
-
-  # Unpack required data -------------------------------------------------------
-
-  # Tag matrices
-  if (!is.null(data$tags)) {
-    mT <- data$tags$mT
-    mR <- data$tags$mR
-  } else {
-    mT <- data$mT
-    mR <- data$mR
-  }
-
-  #---------------- Check required data ---------------------------------------#
-
-  # Tag releases
-  checkmate::assert_matrix(mT, mode = "integerish", any.missing = FALSE)
-  checkmate::assert_matrix(mT, ncols = 4, null.ok = FALSE)
-  checkmate::assert_numeric(mT, lower = 0, null.ok = FALSE)
-  checkmate::assert_true(colnames(mT)[1] == "release_step")
-  checkmate::assert_true(colnames(mT)[2] == "release_area")
-  checkmate::assert_true(colnames(mT)[3] == "group")
-  checkmate::assert_true(colnames(mT)[4] == "count")
-  # Tag recoveries
-  checkmate::assert_matrix(mR, mode = "integerish", any.missing = FALSE)
-  checkmate::assert_matrix(mR, ncols = 6, null.ok = FALSE)
-  checkmate::assert_numeric(mR, lower = 0, null.ok = FALSE)
-  checkmate::assert_true(colnames(mR)[1] == "release_step")
-  checkmate::assert_true(colnames(mR)[2] == "release_area")
-  checkmate::assert_true(colnames(mR)[3] == "group")
-  checkmate::assert_true(colnames(mR)[4] == "recover_step")
-  checkmate::assert_true(colnames(mR)[5] == "recover_area")
-  checkmate::assert_true(colnames(mR)[6] == "count")
-  # Check values
-  if (min(mT[, "release_step"]) > 0) {
-    cat("caution: time step not indexed from zero")
-  }
-
-  # Create index limits --------------------------------------------------------
-
-  cat("creating index limits \n")
-  # Set index limits
-  nt <- max(c(mT[, "release_step"], mR[, "recover_step"])) + 1L # From zero
-  na <- max(c(mT[, "release_area"], mR[, "recover_area"])) + 1L # From zero
-  ng <- max(c(mT[, "group"], mR[, "group"])) + 1L # Indexed from zero for C++
 
   # Unpack index matrix --------------------------------------------------------
 
@@ -448,19 +449,19 @@ mmmFit <- function(data,
     vwa <- c(seq_len(na) - 1L)
   }
 
-  #---------------- Update time span at liberty -------------------------------#
+  # Update time span at liberty ------------------------------------------------
 
-  # Check data$tags for minimum steps at liberty
   if (!is.null(data$tags)) {
-    steps_liberty <- data$tags$steps_liberty
+    s0 <- data$tags$steps_liberty
+    s1 <- span_liberty[1]
+    if (s0 != s1) {
+      cat("caution: tag steps_liberty != settings span_liberty[1]: ")
+      cat(s0, "!=", s1, "\n")
+    }
   } else {
-    steps_liberty <- 1L
+    cat("check that tag data reflect settings span_liberty\n")
   }
-  # Reconcile minimum steps at liberty
-  if (span_liberty[1] < steps_liberty) {
-    span_liberty[1] <- steps_liberty
-    cat("using initial time at liberty from tags:", steps_liberty)
-  }
+  cat("span_liberty:", span_liberty, "\n")
 
   #---------------- Unpack arguments for tmb_parameters -----------------------#
 
@@ -563,7 +564,7 @@ mmmFit <- function(data,
     vwa = vwa # Index vector: area for fishing rate weighting
   )
 
-  #---------------- Create tmb_parameters -------------------------------------#
+  # Create tmb_parameters ------------------------------------------------------
 
   cat("creating tmb_parameters \n")
   tmb_parameters <- list(
@@ -576,7 +577,7 @@ mmmFit <- function(data,
     log_sD = log(sD) # Negative binomial dispersion
   )
 
-  #---------------- Create tmb_random -----------------------------------------#
+  # Create tmb_random ----------------------------------------------------------
 
   cat("creating tmb_random \n")
   if (is.null(random)) {
@@ -663,95 +664,52 @@ mmmFit <- function(data,
   #---------------- Create sd_report ------------------------------------------#
 
   tictoc::tic("sd_report")
-  cat("creating sd_report")
+  cat("\ncreating sd_report")
   cat("\nsd_report mgc \n")
   sd_report <- TMB::sdreport(adfun)
   conv_list <- get_convergence_diagnostics(sd_report)
   mgc <- max(abs(conv_list$final_grads))
   tictoc::toc()
 
-  #---------------- Compute goodness of fit -----------------------------------#
+  # Compute goodness of fit ----------------------------------------------------
 
-  # tictoc::tic("goodness")
-  # cat("computing goodness of fit\n")
-  # # TODO
-  #
-  #
-  #
-  #
-  #
-  # tictoc::toc()
 
-  # #---------------- Compute results -------------------------------------------#
-  #
-  # tictoc::tic("results")
-  # cat("computing results")
-  # # TODO: Update results
-  # # Use result_steps here
-  # # TODO: Continue from here
-  #
-  # #---------------- Create movement probability results -----------------------#
-  #
-  # tictoc::tic("computing movement estimates and std errs")
-  # pars <- subset_by_name(model$par, "movement_parameters_3d")
-  # if (time_process == 0) {
-  #   covs <- subset_by_name(sd_report$cov.fixed, "movement_parameters_3d")
-  # } else {
-  #   # warning("Parameters are a random effect: Figure out where to access covs")
-  #   covs <- subset_by_name(sd_report$cov.fixed, "movement_parameters_3d")
-  # }
-  # mpr_df <- create_movement_probability_results(
-  #   pars = pars,
-  #   covs = covs,
-  #   dims = c(nv, np, nt, na, ng),
-  #   tp_2d = template_2d,
-  #   result_units = result_units,
-  #   n_draws = 1000)
-  # tictoc::toc()
-  #
-  # #---------------- Create natural mortality results --------------------------#
-  #
-  # nmr_mat <- summary(sd_report)["natural_mortality_results", , drop = FALSE]
-  # rownames(nmr_mat) <- NULL
-  # colnames(nmr_mat) <- c("Estimate", "SE")
-  # nmr_df <- as.data.frame(nmr_mat)
-  #
-  # #---------------- Create capture bias results -------------------------------#
-  #
-  # cbr_ind <- which(rownames(summary(sd_report)) == "capture_bias_2d")
-  # cbr_mat <- matrix(0, nrow = na * ng, ncol = 4)
-  # cbr_mat[, 1] <- rep(seq_len(ng), each = na)
-  # cbr_mat[, 2] <- rep(seq_len(na), ng)
-  # cbr_mat[, 3:4] <- summary(sd_report)[cbr_ind, ]
-  # colnames(cbr_mat) <- c("Class", "Area", "Estimate", "SE")
-  # cbr_df <- as.data.frame(cbr_mat)
-  #
-  # #---------------- Create dispersion results ---------------------------------#
-  #
-  # dsp_mat <- summary(sd_report)["dispersion", , drop = FALSE]
-  # rownames(dsp_mat) <- NULL
-  # colnames(dsp_mat) <- c("Estimate", "SE")
-  # dsp_df <- as.data.frame(dsp_mat)
-  #
-  # #---------------- Create results list ---------------------------------------#
-  #
-  # results_list <- list(movement_probability_results = mpr_df,
-  #                      natural_mortality_results = nmr_df,
-  #                      capture_bias = cbr_df,
-  #                      dispersion = dsp_df)
-  #
-  # tictoc::toc()
-  #
-  # #----------------------------------------------------------------------------#
-  #
-  # tictoc::toc()
-  # # TODO: Fix before here
+  # Compute movement rate results ----------------------------------------------
 
-  #---------------- Stop the clock --------------------------------------------#
+  vtaP <- subset_by_name(model$par, "taP")
+
+  # TODO: aP, aK, standard errors
+
+  # Compute natural mortality results ------------------------------------------
+
+  # TODO: use results_step
+
+
+  # Compute capture bias results -----------------------------------------------
+
+
+
+  # Compute optional scalar results --------------------------------------------
+
+
+
+  # Compute fishing mortality rate results -------------------------------------
+
+
+
+  # Compute dispersion results -------------------------------------------------
+
+
+
+  # Assemble results -----------------------------------------------------------
+
+
+
+  # Stop the clock -------------------------------------------------------------
 
   tictoc::toc()
 
-  #---------------- Return an mmmFit object -----------------------------------#
+  # Return mmmFit object -------------------------------------------------------
 
   cat("\nreturning mmmFit object\n")
   # structure(list(
@@ -800,7 +758,7 @@ mmmFit <- function(data,
 #' @examples
 #'
 mmmSet <- function (error_family = c(nb1 = 1, poisson = 0),
-                    span_liberty = c(1, Inf),
+                    span_liberty = c(1, 1000),
                     time_varying = 0,
                     time_process = c(none = 0, rw = 1),
                     cycle_length = 0,
