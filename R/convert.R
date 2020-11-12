@@ -230,7 +230,7 @@ matrix_power <- function (x, n) {
 #' @param np [integer()] Number of movement parameters per step and group.
 #' @param npt [integer()] Number of movement parameter time steps.
 #' @param ng [integer()] Number of groups.
-#' @param mi [matrix()] Matrix index. See [mmmIndex()].
+#' @param mI [matrix()] Matrix index. See [mmmIndex()].
 #' @param pow [integer()] Results step as a multiple of tag time step.
 #'   A matrix power.
 #' @param draws [integer()] Number of draws from which to bootstrap
@@ -241,7 +241,7 @@ matrix_power <- function (x, n) {
 #'
 #' @examples
 #'
-create_movement_results <- function (v, m, np, npt, ng, mi, pow, draws) {
+create_movement_results <- function (v, m, np, npt, ng, mI, pow, draws) {
 
   # Check arguments ------------------------------------------------------------
 
@@ -256,9 +256,9 @@ create_movement_results <- function (v, m, np, npt, ng, mi, pow, draws) {
   checkmate::assert_integerish(npt, lower = 1, len = 1, any.missing = FALSE)
   checkmate::assert_integerish(ng, lower = 1, len = 1, any.missing = FALSE)
   # Matrix index
-  checkmate::assert_matrix(mi, mode = "integerish", any.missing = FALSE)
-  checkmate::assert_numeric(mi, lower = 0, upper = 1)
-  checkmate::assert_true(nrow(mi) == ncol(mi))
+  checkmate::assert_matrix(mI, mode = "integerish", any.missing = FALSE)
+  checkmate::assert_numeric(mI, lower = 0, upper = 1)
+  checkmate::assert_true(nrow(mI) == ncol(mI))
   # Matrix power: result step as a multiple of tag step
   checkmate::assert_integerish(pow, lower = 1, len = 1, any.missing = FALSE)
   # Number of bootstrapping draws
@@ -271,7 +271,7 @@ create_movement_results <- function (v, m, np, npt, ng, mi, pow, draws) {
 
   # Create movement rates ------------------------------------------------------
 
-  aK_fit <- create_movement_rates(a = aP_fit, m = mi)
+  aK_fit <- create_movement_rates(a = aP_fit, m = mI)
   aK_results <- array(0, dim = dim(aK_fit))
   for (cpt in seq_len(npt)) {
     for (mg in seq_len(ng)) {
@@ -297,10 +297,10 @@ create_movement_results <- function (v, m, np, npt, ng, mi, pow, draws) {
     tap <- array(mtaP_draws[i, ], dim = c(np, npt, ng))
     ap <- aperm(tap, c(2, 1, 3))
     # Create movement rates
-    aK_draws[, , , , i] <- create_movement_rates(a = ap, m = mi)
+    aK_draws[, , , , i] <- create_movement_rates(a = ap, m = mI)
   }
   # Summarize SE
-  na <- nrow(mi)
+  na <- nrow(mI)
   for (mg in seq_len(ng)) {
     for (cpt in seq_len(npt)) {
       for (ca in seq_len(na)) {
