@@ -661,7 +661,7 @@ mmmFit <- function(data,
   }
   tictoc::toc()
 
-  #---------------- Create sd_report ------------------------------------------#
+  # Create sd_report -----------------------------------------------------------
 
   tictoc::tic("sd_report")
   cat("\ncreating sd_report")
@@ -669,29 +669,87 @@ mmmFit <- function(data,
   sd_report <- TMB::sdreport(adfun)
   conv_list <- get_convergence_diagnostics(sd_report)
   mgc <- max(abs(conv_list$final_grads))
+  cat("mgc:", mgc, "\n")
   tictoc::toc()
 
   # Compute goodness of fit ----------------------------------------------------
 
 
+  # Extract movement parameters ------------------------------------------------
+
+  # Parameters
+  vtaP_fit <- subset_by_name(model$par, "taP")
+  # Covariances
+  if (is.element("taP", random)) {
+    stop("RE Covariances not yet implemented")
+  } else {
+    mtaP_cov <- subset_by_name(sd_report$cov.fixed, "taP")
+  }
+
   # Compute movement rate results ----------------------------------------------
 
-  vtaP <- subset_by_name(model$par, "taP")
-
-  # TODO: aP, aK, standard errors
+  movement_list <- create_movement_results(
+    v = vtaP_fit,
+    m = mtaP_cov,
+    np = np,
+    npt = npt,
+    ng = ng,
+    mi = mI,
+    pow = results_step,
+    draws = 1000
+  )
 
   # Compute natural mortality results ------------------------------------------
 
-  # TODO: use results_step
-
-
-  # Compute capture bias results -----------------------------------------------
-
-
+  if (is.null(data$sM)) {
+    # Natural mortality
+    logit_exp_neg_sM_fit <- subset_by_name(model$par, "logit_exp_neg_sM")
+    sM_fit <- -log(invlogit(logit_exp_neg_sM_fit))
+    sM_results <- sM_fit * results_step
+    # Standard error
+    logit_exp_neg_sM_se <- summary(sd_report)["logit_exp_neg_sM", 2, drop=FALSE]
+    logit_exp_neg_sM_draws <- rnorm(
+      1000,
+      logit_exp_neg_sM_fit,
+      logit_exp_neg_sM_se
+    )
+    sM_se <- sd(-log(invlogit(logit_exp_neg_sM_draws)), na.rm = TRUE)
+  }
 
   # Compute optional scalar results --------------------------------------------
 
+  # Tag loss rate
+  if (is.null(data$sH)) {
+    # Natural mortality
+    logit_exp_neg_sH_fit <- subset_by_name(model$par, "logit_exp_neg_sH")
+    sH_fit <- -log(invlogit(logit_exp_neg_sH_fit))
+    sH_results <- sH_fit * results_step
+    # Standard error
+    logit_exp_neg_sH_se <- summary(sd_report)["logit_exp_neg_sH", 2, drop=FALSE]
+    logit_exp_neg_sH_draws <- rnorm(
+      1000,
+      logit_exp_neg_sH_fit,
+      logit_exp_neg_sH_se
+    )
+    sH_se <- sd(-log(invlogit(logit_exp_neg_sH_draws)), na.rm = TRUE)
+  }
+  # More...
 
+  # Compute capture bias results -----------------------------------------------
+
+  # Estimate
+  log_vB_fit <- subset_by_name(model$par, "log_vB")
+  vB_results <- exp(log_vB_fit)
+  names(vB_results) <- NULL
+  # SE
+  log_vB_cov <- subset_by_name(sd_report$cov.fixed, "log_vB")
+  log_vB_draws <- MASS::mvrnorm(
+    n = 1000,
+    mu = log_vB_fit,
+    Sigma = log_vB_cov
+  )
+  vB_se <- apply(exp(log_vB_draws), 2, sd, na.rm = TRUE)
+  names(vB_se) <- NULL
 
   # Compute fishing mortality rate results -------------------------------------
 
@@ -699,11 +757,22 @@ mmmFit <- function(data,
 
   # Compute dispersion results -------------------------------------------------
 
-
+  if (error_family) {
+    # Estimate
+    log_sD_fit <- subset_by_name(model$par, "log_sD")
+    sD_results <- exp(log_sD_fit)
+    names(sD_results) <- NULL
+    # SE
+    log_sD_se <- summary(sd_report)["log_sD", 2, drop = FALSE]
+    log_sD_draws <- rnorm(1000, log_sD_fit, log_sD_se)
+    sD_se <- sd(exp(log_sD_draws), na.rm = TRUE)
+  }
 
   # Assemble results -----------------------------------------------------------
 
-
+  results_list <- list(
+    movement_results = movement_list$movement_results
+  )
 
   # Stop the clock -------------------------------------------------------------
 
@@ -712,22 +781,22 @@ mmmFit <- function(data,
   # Return mmmFit object -------------------------------------------------------
 
   cat("\nreturning mmmFit object\n")
-  # structure(list(
-  #   data        = data_list,
-  #   parameters  = parameters_list,
-  #   settings    = settings,
-  #   random      = random,
-  #   map         = map_list,
-  #   control     = control,
-  #   initial     = initial_list,
-  #   results     = results_list,
-  #   sd_report   = sd_report,
-  #   convergence = conv_list,
-  #   goodness    = goodness_list,
-  #   adfun       = adfun,
-  #   model       = model,
-  #   mgc         = mgc),
-  #   class       = c("mmmFit"))
+  structure(list(
+    # data        = data_list,
+    # parameters  = parameters_list,
+    settings    = settings,
+    random      = random,
+    # map         = map_list,
+    control     = control,
+    # initial     = initial_list,
+    results     = results_list,
+    sd_report   = sd_report,
+    convergence = conv_list,
+    # goodness    = goodness_list,
+    adfun       = adfun,
+    model       = model,
+    mgc         = mgc),
+    class       = c("mmmFit"))
 }
 
 #' Settings for \code{mmmFit()}
