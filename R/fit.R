@@ -580,10 +580,11 @@ mmmFit <- function(data,
   # Create tmb_random ----------------------------------------------------------
 
   cat("creating tmb_random \n")
-  if (is.null(random)) {
-    tmb_random <- character()
-  } else {
-    tmb_random <- random
+  tmb_random <- character()
+  if (!is.null(random)) {
+    if ("aP" %in% random) tmb_random <- c(tmb_random, "taP")
+    if ("mF" %in% random) tmb_random <- c(tmb_random, "logit_exp_neg_tmF")
+    if ("vB" %in% random) tmb_random <- c(tmb_random, "log_vB")
   }
 
   # Create tmb_map -------------------------------------------------------------
@@ -667,9 +668,9 @@ mmmFit <- function(data,
   cat("\ncreating sd_report")
   cat("\nsd_report mgc \n")
   sd_report <- TMB::sdreport(adfun)
-  conv_list <- get_convergence_diagnostics(sd_report)
-  mgc <- max(abs(conv_list$final_grads))
-  cat("mgc:", mgc, "\n")
+  convergence <- get_convergence_diagnostics(sd_report)
+  convergence$mgc <- max(abs(convergence$final_grads))
+  cat("mgc:", convergence$mgc, "\n")
   tictoc::toc()
 
   # Compute goodness of fit ----------------------------------------------------
@@ -694,7 +695,7 @@ mmmFit <- function(data,
     np = np,
     npt = npt,
     ng = ng,
-    mi = mI,
+    mI = mI,
     pow = results_step,
     draws = 1000
   )
@@ -713,14 +714,23 @@ mmmFit <- function(data,
       logit_exp_neg_sM_fit,
       logit_exp_neg_sM_se
     )
-    sM_se <- sd(-log(invlogit(logit_exp_neg_sM_draws)), na.rm = TRUE)
+    sM_draws <- -log(invlogit(logit_exp_neg_sM_draws))
+    sM_se <- sd(sM_draws * result_step, na.rm = TRUE)
+  } else {
+    sM_fit <- NULL
+    sM_results <- NULL
+    sM_se <- NULL
+  }
+  natural_mortality <- c(sM_results, sM_se)
+  if (!is.null(natural_mortality)) {
+    names(natural_mortality) <- c("Estimate", "SE")
   }
 
   # Compute optional scalar results --------------------------------------------
 
   # Tag loss rate
   if (is.null(data$sH)) {
-    # Natural mortality
+    # Estimate
     logit_exp_neg_sH_fit <- subset_by_name(model$par, "logit_exp_neg_sH")
     sH_fit <- -log(invlogit(logit_exp_neg_sH_fit))
     sH_results <- sH_fit * results_step
@@ -731,15 +741,49 @@ mmmFit <- function(data,
       logit_exp_neg_sH_fit,
       logit_exp_neg_sH_se
     )
-    sH_se <- sd(-log(invlogit(logit_exp_neg_sH_draws)), na.rm = TRUE)
+    sH_draws <- -log(invlogit(logit_exp_neg_sH_draws))
+    sH_se <- sd(sH_draws * result_step, na.rm = TRUE)
+  } else {
+    sH_fit <- NULL
+    sH_results <- NULL
+    sH_se <- NULL
   }
-  # More...
+  tag_loss_rate <- c(sH_results, sH_se)
+  if (!is.null(tag_loss_rate)) names(tag_loss_rate) <- c("Estimate", "SE")
+  # Initial tag loss rate
+  if (is.null(data$sC)) {
+    # Estimate
+    logit_sA_fit <- subset_by_name(model$par, "logit_sA")
+    sA_fit <- invlogit(logit_sA_fit)
+    sC_fit <- (1 - sA_fit)
+    sC_results <- sC_fit
+    names(sC_fit) <- NULL
+    names(sC_results) <- NULL
+    # Standard error
+    logit_sA_se <- summary(sd_report)["logit_sA", 2, drop = FALSE]
+    logit_sA_draws <- rnorm(
+      1000,
+      logit_sA_fit,
+      logit_sA_se
+    )
+    sA_se <- sd(invlogit(logit_sA_draws), na.rm = TRUE)
+    sC_se <- sA_se
+    names(sC_se) <- NULL
+  } else {
+    sC_fit <- NULL
+    sC_results <- NULL
+    sC_se <- NULL
+  }
+  initial_tag_loss <- c(sC_results, sC_se)
+  if(!is.null(initial_tag_loss)) names(initial_tag_loss) <- c("Estimate", "SE")
 
   # Compute capture bias results -----------------------------------------------
 
   # Estimate
   log_vB_fit <- subset_by_name(model$par, "log_vB")
-  vB_results <- exp(log_vB_fit)
+  vB_fit <- exp(log_vB_fit)
+  vB_results <- vB_fit
+  names(vB_fit) <- NULL
   names(vB_results) <- NULL
   # SE
   log_vB_cov <- subset_by_name(sd_report$cov.fixed, "log_vB")
@@ -750,28 +794,124 @@ mmmFit <- function(data,
   )
   vB_se <- apply(exp(log_vB_draws), 2, sd, na.rm = TRUE)
   names(vB_se) <- NULL
+  fishing_bias <- data.frame(
+    Group = seq_along(vB_results),
+    Estimate = vB_results,
+    SE = vB_se
+  )
+  fishing_bias <- as.matrix(fishing_bias)
 
   # Compute fishing mortality rate results -------------------------------------
 
-
+  if (is.null(data$mF)) {
+    # Estimates
+    vlogit_exp_neg_tmF_fit <- subset_by_name(model$par, "logit_exp_neg_tmF")
+    vtmF_fit <- -log(invlogit(vlogit_exp_neg_tmF_fit))
+    tmF_fit <- matrix(vtmF_fit, nrow = nfa, ncol = nft)
+    mF_fit <- t(tmF_fit)
+    mF_results <- mF_fit * results_step
+    # Standard error
+    if (is.element("logit_exp_neg_tmF", random)) {
+      stop("RE not yet implemented for logit_exp_neg_tmF")
+    } else {
+      # Covariance matrix
+      mlogit_exp_neg_tmF_cov <- subset_by_name(
+        sd_report$cov.fixed,
+        "logit_exp_neg_tmF"
+      )
+      # Draws
+      mvlogit_exp_neg_tmF_draws <- MASS::mvrnorm(
+        n = 1000,
+        mu = vlogit_exp_neg_tmF_fit,
+        Sigma = mlogit_exp_neg_tmF_cov
+      )
+      # Untransform
+      mvtmF_draws <- -log(invlogit(mvlogit_exp_neg_tmF_draws))
+      # Compute SE
+      vtmF_se <- apply(mvtmF_draws * results_step, 2, sd, na.rm = TRUE)
+      tmF_se <- matrix(vtmF_se, nrow = nfa, ncol = nft)
+      mF_se <- t(tmF_se)
+      # Initialize
+      fishing_rate <- matrix(0, nrow = prod(dim(mF_results)), ncol = 4L)
+      row_ind <- 1L
+      # Populate
+      for (cfa in seq_len(nfa)) {
+        for (cft in seq_len(nft)) {
+          fishing_rate[row_ind, 1] <- cfa
+          fishing_rate[row_ind, 2] <- cft
+          fishing_rate[row_ind, 3] <- mF_results[cft, cfa]
+          fishing_rate[row_ind, 4] <- mF_se[cft, cfa]
+          row_ind <- row_ind + 1L
+        }
+      }
+      # Set column names
+      dim_names <- c("Fish_area", "Fish_Step")
+      res_names <- c("Estimate", "SE")
+      colnames(fishing_rate) <- c(dim_names, res_names)
+      # Convert to data frame
+      fishing_rate <- as.data.frame(fishing_rate)
+    }
+    } else {
+      mF_fit <- NULL
+      mF_results <- NULL
+      mF_se <- NULL
+      fishing_rate <- NULL
+    }
 
   # Compute dispersion results -------------------------------------------------
 
   if (error_family) {
     # Estimate
     log_sD_fit <- subset_by_name(model$par, "log_sD")
-    sD_results <- exp(log_sD_fit)
+    sD_fit <- exp(log_sD_fit)
+    sD_results <- sD_fit
+    names(sD_fit) <- NULL
     names(sD_results) <- NULL
     # SE
     log_sD_se <- summary(sd_report)["log_sD", 2, drop = FALSE]
     log_sD_draws <- rnorm(1000, log_sD_fit, log_sD_se)
     sD_se <- sd(exp(log_sD_draws), na.rm = TRUE)
+  } else {
+    sD_fit <- NULL
+    sD_results <- NULL
+    sD_se <- NULL
   }
+  dispersion <- c(sD_results, sD_se)
+  if (!is.null(dispersion)) names(dispersion) <- c("Estimate", "SE")
+
+  # Assemble inputs ------------------------------------------------------------
+
+  inputs <- list(
+    data       = data,
+    parameters = parameters,
+    settings   = settings,
+    random     = random,
+    map        = map,
+    control    = control
+  )
 
   # Assemble results -----------------------------------------------------------
 
-  results_list <- list(
-    movement_results = movement_list$movement_results
+  results <- list(
+    movement_results = movement_list$movement_results,
+    fishing_rate = fishing_rate,
+    natural_mortality = natural_mortality,
+    tag_loss_rate = tag_loss_rate,
+    initial_tag_loss = initial_tag_loss,
+    fishing_bias = fishing_bias,
+    dispersion = dispersion
+  )
+
+  # Assemble parameters --------------------------------------------------------
+
+  parameters <- list(
+    aP = movement_list$aP_fit,
+    mF = mF_fit,
+    sM = sM_fit,
+    sH = sH_fit,
+    sC = sC_fit,
+    vB = vB_fit,
+    sD = sD_fit
   )
 
   # Stop the clock -------------------------------------------------------------
@@ -782,20 +922,14 @@ mmmFit <- function(data,
 
   cat("\nreturning mmmFit object\n")
   structure(list(
-    # data        = data_list,
-    # parameters  = parameters_list,
-    settings    = settings,
-    random      = random,
-    # map         = map_list,
-    control     = control,
-    # initial     = initial_list,
-    results     = results_list,
-    sd_report   = sd_report,
-    convergence = conv_list,
-    # goodness    = goodness_list,
+    inputs      = inputs,
     adfun       = adfun,
     model       = model,
-    mgc         = mgc),
+    results     = results,
+    # goodness    = goodness,
+    sd_report   = sd_report,
+    parameters  = parameters,
+    convergence = convergence),
     class       = c("mmmFit"))
 }
 
