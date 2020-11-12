@@ -2,21 +2,36 @@
 % Please edit documentation in R/convert.R
 \name{create_movement_parameters}
 \alias{create_movement_parameters}
-\title{Generic Create Movement Parameter Array}
+\title{Create Movement Parameter Array}
 \usage{
-create_movement_parameters(x, ...)
+create_movement_parameters(x, m = NULL)
 }
 \arguments{
-\item{x}{A vector of parameter values or array of movement rates}
+\item{x}{Numeric Array. aK.}
 
-\item{...}{Other arguments for class specific methods}
+\item{m}{Integer matrix. Movement indexes. dim = c(pa, ca)}
 }
 \value{
-An array
+\code{\link[=array]{array()}}
 }
 \description{
-Generic Create Movement Parameter Array
+Create Movement Parameter Array
 }
 \examples{
+
+# 2x2
+x <- array(c(0.9, 0.2, 0.1, 0.8, 0.7, 0.4, 0.3, 0.6), dim = c(2, 2, 2, 1))
+m <- array(c(0, 1, 1, 0), dim = c(2, 2))
+a <- create_movement_parameters(x, m)
+k <- create_movement_rates(a, m)
+all(k - x < 1e-12)
+
+# 3x3 with missing adjacent rates
+v <- c(0.9,0.1,0.3,0,0.8,0,0.1,0.1,0.7,0.6,0.2,0.6,0,0.5,0,0.4,0.3,0.4)
+x <- array(v, dim = c(3,3,2,1))
+m <- array(c(0,1,1,0,0,0,1,1,0), dim = c(3,3))
+a <- create_movement_parameters(x, m)
+k <- create_movement_rates(a, m)
+all(k - x < 1e-12)
 
 }
