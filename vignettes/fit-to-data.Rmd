@@ -107,7 +107,7 @@ sC <- 0.1
 
 ## Populate Data List
 ```{r create-data-list}
-d <- list(
+data_list <- list(
   tags = tags,
   mI = mI,
   mL = mL,
@@ -122,21 +122,21 @@ d <- list(
 
 ## Populate Parameter List
 ```{r create-parameter-list}
-p <- NULL
+parameters_list <- NULL
 
 
 ```
 
 ## Population Settings List
 ```{r create-settings-list}
-s <- mmmSet(
+settings_list <- mmmSet(
   error_family = 0, 
   span_liberty = c(1, 40),
   nlminb_loops = 5,
   newton_steps = 5,
   openmp_cores = 6)
 
-s <- mmmSet(
+settings_list <- mmmSet(
   error_family = 1,
   span_liberty = c(1, 40),
   nlminb_loops = 5,
@@ -150,11 +150,11 @@ s <- mmmSet(
 ```{r fit-to-data}
 # Fit
 fit <- mmmFit(
-  data = d,
-  parameters = p,
+  data = data_list,
+  parameters = parameters_list,
   random = NULL,
   map = NULL,
-  settings = s,
+  settings = settings_list,
   control = mmmControl(trace = 5)
 )
 
