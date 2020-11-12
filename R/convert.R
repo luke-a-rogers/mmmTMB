@@ -37,16 +37,15 @@ invlogit <- function (y) {
 
 #' Create Movement Rate Array
 #'
-#' @param a Numeric array. Movement parameters.
-#' @param m Integer matrix. Movement indexes.
-#' @param t Are \code{a} and \code{m} transposes?
+#' @param a Numeric array. Movement parameters. (Not transposed).
+#' @param m Integer matrix. Movement indexes. (Not transposed).
 #'
-#' @return
+#' @return [array()] Movement rates
 #' @export
 #'
 #' @examples
 #'
-create_movement_rates <- function (a, m, t = FALSE) {
+create_movement_rates <- function (a, m) {
 
   # Check arguments
   checkmate::assert_array(a, mode = "numeric", any.missing = FALSE)
@@ -54,13 +53,8 @@ create_movement_rates <- function (a, m, t = FALSE) {
   checkmate::assert_matrix(m, mode = "integerish", any.missing = FALSE)
   checkmate::assert_numeric(m, lower = 0, upper = 1)
   # Convert to transposes
-  if (t) {
-    ta <- a
-    tm <- m
-  } else {
-    ta <- aperm(a, c(2,1,3))
-    tm <- t(m)
-  }
+  ta <- aperm(a, c(2,1,3))
+  tm <- t(m)
   # Initialize index limits
   na <- nrow(tm) # Matrix tm has rows = na, and cols = na
   npt <- dim(ta)[2] # Array ta has dim = c(np, npt, ng)
@@ -100,79 +94,13 @@ create_movement_rates <- function (a, m, t = FALSE) {
   return(k)
 }
 
-#' Generic Create Movement Parameter Array
-#'
-#' @param x A vector of parameter values or array of movement rates
-#' @param ... Other arguments for class specific methods
-#'
-#' @return An array
-#' @export
-#'
-#' @examples
-#'
-create_movement_parameters <- function (x, ...) {
-  UseMethod("create_movement_parameters")
-}
-
-#' Default Create Movement Parameter Array
-#'
-#' @param x A vector of parameter values or array of movement rates
-#' @param ... Other arguments for class specific methods
-#'
-#' @return
-#'
-#' @examples
-#'
-create_movement_parameters.default <- function (x, ...) {
-  stop("methods only implemented for numeric and array classes")
-}
-
-#' Create Movement Parameter Array from a Vector of Parameters
-#'
-#' @param x Numeric vector. Movement parameters.
-#' @param d Integer vector. Dimensions based on source of \code{x}. From
-#'   \code{R} use \code{c(npt, np, ng)} or from \code{TMB} use
-#'   \code{c(np, npt, ng)}.
-#' @param t Logical. Transpose the first two dimensions of the parameter
-#'   array?
-#'
-#' @return An array.
-#'
-#' @examples
-#'
-#' # aP
-#' x <- rnorm(24, 0, 1)
-#' d <- c(6, 4, 2)
-#' aP <- create_movement_parameters(x, d)
-#'
-#' # taP
-#' x <- rnorm(24, 0, 1)
-#' d <- c(6, 4, 2)
-#' taP <- create_movement_parameters(x, d, TRUE)
-#'
-create_movement_parameters.numeric <- function (x,
-                                                d = NULL,
-                                                t = FALSE) {
-  # Check arguments
-  checkmate::assert_numeric(x, finite = TRUE, any.missing = FALSE)
-  checkmate::assert_integerish(d, lower = 0, len = 3, any.missing = FALSE)
-  checkmate::assert_logical(t, len = 1L, any.missing = FALSE)
-  # Assemble array
-  a <- array(x, dim = d)
-  # Transpose?
-  if (t) a <- aperm(a, c(2, 1, 3))
-  # Return
-  return(a)
-}
-
-#' Create Movement Parameter Array from a Movement Rate Array
+#' Create Movement Parameter Array
 #'
 #' @param x Numeric Array. aK.
 #' @param m Integer matrix. Movement indexes. dim = c(pa, ca)
-#' @param t Logical. Transpose the first two dimensions of the parameter
-#'   array?
 #'
-#' @return An array
+#' @return [array()]
+#' @export
 #'
 #' @examples
 #'
@@ -191,14 +119,12 @@ create_movement_parameters.numeric <- function (x,
 #' k <- create_movement_rates(a, m)
 #' all(k - x < 1e-12)
 #'
-create_movement_parameters.array <- function (x,
-                                              m = NULL,
-                                              t = FALSE) {
+create_movement_parameters <- function (x,
+                                        m = NULL) {
 
   # Check arguments
   checkmate::assert_array(x, d = 4, any.missing = FALSE)
   checkmate::assert_matrix(m, mode = "integerish", any.missing = FALSE)
-  checkmate::assert_logical(t, len = 1L, any.missing = FALSE)
   # Initialize index limits
   np <- sum(m)
   na <- dim(x)[1]
@@ -247,12 +173,8 @@ create_movement_parameters.array <- function (x,
       }
     }
   }
-  # Untranspose?
-  if (t) {
-    a <- ta
-  } else {
-    a <- aperm(ta, c(2, 1, 3))
-  }
+  # Untranspose
+  a <- aperm(ta, c(2, 1, 3))
   # Return
   return(a)
 }
@@ -276,236 +198,154 @@ subset_by_name <- function (x, x_names) {
   }
 }
 
+#' Matrix Power
+#'
+#' @param x [matrix()] Numeric matrix
+#' @param n [integer()] Matrix power
+#'
+#' @return [matrix()]
+#' @export
+#'
+#' @examples
+#'
+#' x <- matrix(c(1,2,3,4), nrow = 2)
+#' n <- 2
+#' matrix_power(x, n)
+#'
 matrix_power <- function (x, n) {
+  # Check arguments
+  checkmate::assert_matrix(x, mode = "numeric", any.missing = FALSE)
+  checkmate::assert_integerish(n, lower = 1, len = 1, any.missing = FALSE)
+  # Compute matrix power
   x_n <- x
-  for (i in seq_len(n - 1)) {x_n <- x_n %*% x}
-  x_n
+  for (i in seq_len(n - 1)) x_n <- x_n %*% x
+  return(x_n)
 }
 
-create_movement_parameters_3d <- function (pars, nv, np, ng) {
-  # Create movement parameter array
-  array(pars, dim = c(nv, np, ng))
-}
+#' Create Movement Results
+#'
+#' @param v [numeric()] Vector of movement parameters in transpose order.
+#' @param m [matrix()] Matrix of movement parameter covariances in
+#'   transpose order.
+#' @param np [integer()] Number of movement parameters per step and group.
+#' @param npt [integer()] Number of movement parameter time steps.
+#' @param ng [integer()] Number of groups.
+#' @param mi [matrix()] Matrix index. See [mmmIndex()].
+#' @param pow [integer()] Results step as a multiple of tag time step.
+#'   A matrix power.
+#' @param draws [integer()] Number of draws from which to bootstrap
+#' movement result standard errors.
+#'
+#' @return A [list()]
+#' @export
+#'
+#' @examples
+#'
+create_movement_results <- function (v, m, np, npt, ng, mi, pow, draws) {
 
-create_movement_probability_4d <- function(na, nv, ng, mp_3d, tp_2d) {
+  # Check arguments ------------------------------------------------------------
 
-  #---------------- Check arguments -------------------------------------------#
+  # Vector v: vtaP
+  checkmate::assert_numeric(v, finite = TRUE, any.missing = FALSE)
+  checkmate::assert_numeric(v, len = np * npt * ng)
+  # Matrix m: mtaP_cov
+  checkmate::assert_matrix(m, any.missing = FALSE)
+  checkmate::assert_true(nrow(m) == ncol(m))
+  # Dimensions
+  checkmate::assert_integerish(np, lower = 1, len = 1, any.missing = FALSE)
+  checkmate::assert_integerish(npt, lower = 1, len = 1, any.missing = FALSE)
+  checkmate::assert_integerish(ng, lower = 1, len = 1, any.missing = FALSE)
+  # Matrix index
+  checkmate::assert_matrix(mi, mode = "integerish", any.missing = FALSE)
+  checkmate::assert_numeric(mi, lower = 0, upper = 1)
+  checkmate::assert_true(nrow(mi) == ncol(mi))
+  # Matrix power: result step as a multiple of tag step
+  checkmate::assert_integerish(pow, lower = 1, len = 1, any.missing = FALSE)
+  # Number of bootstrapping draws
+  checkmate::assert_integerish(draws, lower = 1, len = 1, any.missing = FALSE)
 
-  #---------------- Populate the movement probability array -------------------#
+  # Create movement parameters -------------------------------------------------
 
-  # Initialize array
-  mp_4d <- array(0, dim = c(na, na, nv, ng))
-  # Compute probabilities
-  for (mg in seq_len(ng)) {
-    for (cv in seq_len(nv)) {
-      par_num <- 1
-      par_denom <- 1
-      for (pa in seq_len(na)) {
-        # Set the denom sum to zero for this row
-        denom_sum <- 0
-        # Compute the denom sum
-        for (ca in seq_len(na)) {
-          if (tp_2d[pa, ca] > 0) {
-            denom_sum <- denom_sum + exp(mp_3d[cv, par_denom, mg])
-            par_denom <- par_denom + 1
-          }
-        }
-        # Set the prob sum to zero for this row
-        prob_sum <- 0
-        # Compute the probability for pa != ca
-        for (ca in seq_len(na)) {
-          if (tp_2d[pa, ca] > 0) {
-            mp_4d[pa, ca, cv, mg] <- exp(mp_3d[cv, par_num, mg]) / (1 + denom_sum)
-            prob_sum <- prob_sum + mp_4d[pa, ca, cv, mg]
-            par_num <- par_num + 1
-          }
-        }
-        # Compute the probability for pa == ca
-        mp_4d[pa, pa, cv, mg] <- 1 - prob_sum
-      }
+  taP_fit <- array(v, dim = c(np, npt, ng))
+  aP_fit <- aperm(taP_fit, c(2, 1, 3))
+
+  # Create movement rates ------------------------------------------------------
+
+  aK_fit <- create_movement_rates(a = aP_fit, m = mi)
+  aK_results <- array(0, dim = dim(aK_fit))
+  for (cpt in seq_len(npt)) {
+    for (mg in seq_len(ng)) {
+      aK_results[, , cpt, mg] <- matrix_power(aK_fit[, , cpt, mg], pow)
     }
   }
-  # Return the movement probability array
-  mp_4d
-}
 
+  # Create movement rate standard errors ---------------------------------------
 
-create_movement_probability_results_4d <- function (mp_4d, result_units) {
-
-  #---------------- Check arguments -------------------------------------------#
-
-  #---------------- Extract dimensions ----------------------------------------#
-
-  nv <- dim(mp_4d)[3]
-  ng <- dim(mp_4d)[4]
-
-  #---------------- Populate the movement probability results array -----------#
-
-  mpr_4d <- array(0, dim = dim(mp_4d))
-  for (mg in seq_len(ng)) {
-    for (cv in seq_len(nv)) {
-      mpr_4d[, , cv, mg] <- matrix_power(mp_4d[, , cv, mg], result_units)
-    }
-  }
-  # Return
-  mpr_4d
-}
-
-
-
-create_movement_probability_results_std_err_4d <- function (pars,
-                                                            covs,
-                                                            dims,
-                                                            tp_2d,
-                                                            result_units,
-                                                            n_draws = 1000) {
-
-  #---------------- Check arguments -------------------------------------------#
-
-
-
-  #---------------- Extract dimensions ----------------------------------------#
-
-  nv <- dims[1]
-  np <- dims[2]
-  nt <- dims[3]
-  na <- dims[4]
-  ng <- dims[5]
-
-  #---------------- Perform draws ---------------------------------------------#
-
-  mpr_se_5d <- array(0, dim = c(na, na, nv, ng, n_draws))
-  for (i in seq_len(n_draws)) {
-
-    #---------------- Draw parameters -----------------------------------------#
-
-    par_devs <- MASS::mvrnorm(n = 1,
-                              mu = rep(0, nv * np * ng),
-                              Sigma = covs,
-                              empirical = FALSE)
-    par_draw <- pars + par_devs
-
-    #---------------- Create movement parameter array -------------------------#
-
-    mp_3d <- create_movement_parameters_3d(pars = par_draw,
-                                           nv = nv,
-                                           np = np,
-                                           ng = ng)
-
-    #---------------- Create movement probability array -----------------------#
-
-    mp_4d <- create_movement_probability_4d(na = na,
-                                            nv = nv,
-                                            ng = ng,
-                                            mp_3d = mp_3d,
-                                            tp_2d = tp_2d)
-
-    #---------------- Create movement probability results array ---------------#
-
-    mpr_se_5d[, , , , i] <- create_movement_probability_results_4d(
-      mp_4d = mp_4d,
-      result_units = result_units
-    )
-  }
-
-  #---------------- Summarize to SE -------------------------------------------#
-
-  mpr_se_4d <- array(0, dim = c(na, na, nv, ng))
-  for (pa in seq_len(na)) {
-    for (ca in seq_len(na)) {
-      for (cv in seq_len(nv)) {
-        for (mg in seq_len(ng)) {
-          mpr_se_4d[pa, ca, cv, mg] <- sd(mpr_se_5d[pa, ca, cv, mg, ], na.rm = TRUE)
-        }
-      }
-    }
-  }
-  # Return
-  mpr_se_4d
-}
-
-
-
-create_movement_probability_results <- function (pars,
-                                                 covs,
-                                                 dims,
-                                                 tp_2d,
-                                                 result_units,
-                                                 n_draws = 1000) {
-
-  #---------------- Check arguments -------------------------------------------#
-
-
-
-  #---------------- Extract dimensions ----------------------------------------#
-
-  nv <- dims[1]
-  np <- dims[2]
-  nt <- dims[3]
-  na <- dims[4]
-  ng <- dims[5]
-
-  #---------------- Create movement parameter array ---------------------------#
-
-  mp_3d <- create_movement_parameters_3d(pars = pars,
-                                         nv = nv,
-                                         np = np,
-                                         ng = ng)
-
-  #---------------- Create movement probability array -------------------------#
-
-  mp_4d <- create_movement_probability_4d(na = na,
-                                          nv = nv,
-                                          ng = ng,
-                                          mp_3d = mp_3d,
-                                          tp_2d = tp_2d)
-
-  #---------------- Create movement probability results array -----------------#
-
-  mpr_4d <- create_movement_probability_results_4d(
-    mp_4d = mp_4d,
-    result_units = result_units
+  # Initialize
+  aK_draws <- array(0, dim = c(dim(aK_results), draws))
+  aK_se <- array(0, dim = dim(aK_results))
+  # Perform draws: each row is one draw in vector transpose order
+  mtaP_draws <- MASS::mvrnorm(
+    n = draws,
+    mu = v,
+    Sigma = m,
+    empirical = FALSE
   )
-
-  #---------------- Compute standard errors array -----------------------------#
-
-  mpr_se_4d <- create_movement_probability_results_std_err_4d(
-    pars = pars,
-    covs = covs,
-    dims = dims,
-    tp_2d = tp_2d,
-    result_units = result_units,
-    n_draws = n_draws
-  )
-
-  #---------------- Create movement probability results data frame ------------#
-
-  mp_results_mat <- matrix(0, nrow = na * na * nv * ng, ncol = 6)
-  row_count <- 1
+  # Populate aK_draws
+  for (i in seq_len(draws)) {
+    # Create parameter array
+    tap <- array(mtaP_draws[i, ], dim = c(np, npt, ng))
+    ap <- aperm(tap, c(2, 1, 3))
+    # Create movement rates
+    aK_draws[, , , , i] <- create_movement_rates(a = ap, m = mi)
+  }
+  # Summarize SE
+  na <- nrow(mi)
   for (mg in seq_len(ng)) {
-    for (pa in seq_len(na)) {
+    for (cpt in seq_len(npt)) {
       for (ca in seq_len(na)) {
-        for (cv in seq_len(nv)) {
-          mp_results_mat[row_count, 1] <- cv
-          mp_results_mat[row_count, 2] <- mg
-          mp_results_mat[row_count, 3] <- pa
-          mp_results_mat[row_count, 4] <- ca
-          mp_results_mat[row_count, 5] <- mpr_4d[pa, ca, cv, mg]
-          mp_results_mat[row_count, 6] <- mpr_se_4d[pa, ca, cv, mg]
-          row_count <- row_count + 1
+        for (pa in seq_len(na)) {
+          aK_se[pa, ca, cpt, mg] <- sd(aK_draws[pa, ca, cpt, mg, ], na.rm = TRUE)
+        }
+      }
+    }
+  }
+
+  # Create movement results data frame -----------------------------------------
+
+  # Initialize
+  movement_results <- matrix(0, nrow = prod(dim(aK_results)), ncol = 6L)
+  row_ind <- 1L
+  # Populate
+  for (mg in seq_len(ng)) {
+    for (cpt in seq_len(npt)) {
+      for (pa in seq_len(na)) {
+        for (ca in seq_len(na)) {
+          movement_results[row_ind, 1] <- pa
+          movement_results[row_ind, 2] <- ca
+          movement_results[row_ind, 3] <- cpt
+          movement_results[row_ind, 4] <- mg
+          movement_results[row_ind, 5] <- aK_results[pa, ca, cpt, mg]
+          movement_results[row_ind, 6] <- aK_se[pa, ca, cpt, mg]
+          row_ind <- row_ind + 1L
         }
       }
     }
   }
   # Set column names
-  colnames(mp_results_mat) <- c("Pattern_Time", "Class", "Area_From",
-                                "Area_To", "Estimate", "SE")
+  dim_names <- c("Area_From", "Area_To", "Result_Step", "Group")
+  res_names <- c("Estimate", "SE")
+  colnames(movement_results) <- c(dim_names, res_names)
   # Convert to data frame
-  mp_results_df <- as.data.frame(mp_results_mat)
+  movement_results <- as.data.frame(movement_results)
 
-  # Return movement probability results data frame
-  mp_results_df
+  # Return list of results -----------------------------------------------------
+
+  return(list(
+    movement_results = movement_results,
+    aP_fit = aP_fit,
+    aK_fit = aK_fit,
+    aK_results = aK_results,
+    aK_se = aK_se
+  ))
 }
-
-
-
