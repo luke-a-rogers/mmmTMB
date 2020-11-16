@@ -96,14 +96,14 @@ mmmFit <- function(data,
   checkmate::assert_numeric(data$mR, lower = 0, null.ok = TRUE)
   checkmate::assert_numeric(data$mI, lower = 0, upper = 1, null.ok = TRUE)
   checkmate::assert_numeric(data$mL, lower = 0, upper = 1, null.ok = TRUE)
-  checkmate::assert_numeric(data$mW, lower = 0, upper = 0, null.ok = TRUE)
+  checkmate::assert_numeric(data$mW, lower = 0, upper = 1, null.ok = TRUE)
   # Optionally parameters
   checkmate::assert_matrix(data$mF, mode = "double", null.ok = TRUE)
   checkmate::assert_numeric(data$mF, lower = 0, null.ok = TRUE)
-  checkmate::assert_double(data$sM, lower = 0, len = 1, null.ok = TRUE)
-  checkmate::assert_double(data$sH, lower = 0, len = 1, null.ok = TRUE)
-  checkmate::assert_double(data$sC, lower = 0, len = 1, null.ok = TRUE)
-  checkmate::assert_double(data$sC, upper = 1, null.ok = TRUE)
+  checkmate::assert_numeric(data$sM, lower = 0, len = 1, null.ok = TRUE)
+  checkmate::assert_numeric(data$sH, lower = 0, len = 1, null.ok = TRUE)
+  checkmate::assert_numeric(data$sC, lower = 0, len = 1, null.ok = TRUE)
+  checkmate::assert_numeric(data$sC, upper = 1, null.ok = TRUE)
 
   #---------------- Check parameters argument ---------------------------------#
 
