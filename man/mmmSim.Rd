@@ -4,14 +4,16 @@
 \alias{mmmSim}
 \title{Simulate Tag Recovery Data}
 \usage{
-mmmSim(data, parameters, settings = mmmSet())
+mmmSim(data, parameters = NULL, settings = mmmSet())
 }
 \arguments{
-\item{data}{A list.}
+\item{data}{\code{\link[=list]{list()}} Input data. See details.}
 
-\item{parameters}{A list.}
+\item{parameters}{\code{\link[=list]{list()}} Optional parameters to be treated as data.
+See details.}
 
-\item{settings}{A list. See \code{mmmSet()}.}
+\item{settings}{\code{\link[=list]{list()}} Values that help define the simulation model.
+See \code{mmmSet()}.}
 }
 \value{
 An object of class \code{mmmSim}.
@@ -19,6 +21,13 @@ An object of class \code{mmmSim}.
 \description{
 Simulate Tag Recovery Data
 }
+\details{
+TBD
+}
 \examples{
+sim_mF <- as.matrix(0.04)
+sim_sM <- 0.1
+d <- list(mT = sim_mT, mI = sim_mI, aK = sim_aK, mF = sim_mF, sM = sim_sM)
+s1 <- mmmSim(d)
 
 }
