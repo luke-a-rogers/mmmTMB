@@ -1,16 +1,24 @@
 #' Simulate Tag Recovery Data
 #'
-#' @param data A list.
-#' @param parameters A list.
-#' @param settings A list. See \code{mmmSet()}.
+#' @param data [list()] Input data. See details.
+#' @param parameters [list()] Optional parameters to be treated as data.
+#'   See details.
+#' @param settings [list()] Values that help define the simulation model.
+#'   See \code{mmmSet()}.
+#'
+#' @details TBD
 #'
 #' @return An object of class \code{mmmSim}.
 #' @export
 #'
 #' @examples
+#' sim_mF <- as.matrix(0.04)
+#' sim_sM <- 0.1
+#' d <- list(mT = sim_mT, mI = sim_mI, aK = sim_aK, mF = sim_mF, sM = sim_sM)
+#' s1 <- mmmSim(d)
 #'
 mmmSim <- function(data,
-                   parameters,
+                   parameters = NULL,
                    settings = mmmSet()) {
 
   # Start the clock ------------------------------------------------------------
@@ -22,12 +30,10 @@ mmmSim <- function(data,
   cat("checking data arguments \n")
   checkmate::assert_list(data, null.ok = FALSE)
   checkmate::assert_matrix(data$mT, mode = "integerish", null.ok = FALSE)
-  checkmate::assert_matrix(data$mR, mode = "integerish", null.ok = TRUE)
   checkmate::assert_matrix(data$mI, mode = "integerish", null.ok = TRUE)
   checkmate::assert_matrix(data$mL, mode = "double", null.ok = TRUE)
   checkmate::assert_matrix(data$mW, mode = "double", null.ok = TRUE)
   checkmate::assert_numeric(data$mT, lower = 0, null.ok = FALSE)
-  checkmate::assert_numeric(data$mR, lower = 0, null.ok = TRUE)
   checkmate::assert_numeric(data$mI, lower = 0, upper = 1, null.ok = TRUE)
   checkmate::assert_numeric(data$mL, lower = 0, upper = 1, null.ok = TRUE)
   checkmate::assert_numeric(data$mW, lower = 0, upper = 0, null.ok = TRUE)
@@ -38,8 +44,12 @@ mmmSim <- function(data,
   checkmate::assert_double(data$sH, lower = 0, len = 1, null.ok = TRUE)
   checkmate::assert_double(data$sC, lower = 0, len = 1, null.ok = TRUE)
   checkmate::assert_double(data$sC, upper = 1, null.ok = TRUE)
+  # Also optionally parameters
+  checkmate::assert_array(data$aP, mode = "double", null.ok = TRUE)
+  checkmate::assert_array(data$aK, mode = "double", null.ok = TRUE)
+  checkmate::assert_numeric(data$vB, lower = 0, null.ok = TRUE)
 
-  #---------------- Check parameters argument ---------------------------------#
+  # Check parameters argument --------------------------------------------------
 
   cat("checking parameter arguments \n")
   checkmate::assert_list(parameters, null.ok = TRUE)
@@ -54,7 +64,7 @@ mmmSim <- function(data,
   checkmate::assert_double(parameters$sC, upper = 1, null.ok = TRUE)
   checkmate::assert_numeric(parameters$vB, lower = 0, null.ok = TRUE)
 
-  #---------------- Check settings argument -----------------------------------#
+  # Check settings argument ----------------------------------------------------
 
   cat("checking settings arguments \n")
   # Check settings
@@ -67,7 +77,7 @@ mmmSim <- function(data,
   checkmate::assert_integerish(settings$span_liberty, len = 2)
   checkmate::assert_integerish(settings$span_liberty, any.missing = FALSE)
   checkmate::assert_integerish(settings$span_liberty, lower = 0)
-  checkmate::assert_true(settings$span_liberty[1] < settings$time_varying[2])
+  checkmate::assert_true(settings$span_liberty[1] < settings$span_liberty[2])
   # Check time varying setting
   checkmate::assert_integerish(settings$time_varying, len = 1)
   checkmate::assert_integerish(settings$time_varying, lower = 0, upper = 1)
@@ -89,7 +99,30 @@ mmmSim <- function(data,
   checkmate::assert_integerish(settings$fish_rate_by, lower = 0, upper = 3)
   checkmate::assert_integerish(settings$fish_rate_by, any.missing = FALSE)
 
-  #---------------- Set default settings --------------------------------------#
+  # Assembly values ------------------------------------------------------------
+
+  mT <- data$mT
+
+  # Check required data --------------------------------------------------------
+
+  # Tag releases
+  checkmate::assert_matrix(mT, mode = "integerish", any.missing = FALSE)
+  checkmate::assert_matrix(mT, ncols = 4, null.ok = FALSE)
+  checkmate::assert_numeric(mT, lower = 0, null.ok = FALSE)
+  checkmate::assert_true(colnames(mT)[1] == "release_step")
+  checkmate::assert_true(colnames(mT)[2] == "release_area")
+  checkmate::assert_true(colnames(mT)[3] == "group")
+  checkmate::assert_true(colnames(mT)[4] == "count")
+  # Check values
+  if (min(mT[, "release_step"]) > 0) cat("caution: time step not indexed from zero")
+
+  # Set index limits -----------------------------------------------------------
+
+  nt <- max(mT[, "release_step"]) + 1L # Index from zero for C++
+  na <- max(mT[, "release_area"]) + 1L # Index from zero for C++
+  ng <- max(mT[, "group"]) + 1L # Index from zero for C++
+
+  # Set default settings -------------------------------------------------------
 
   # Error family
   if (is.null(settings$error_family)) {
@@ -99,7 +132,7 @@ mmmSim <- function(data,
   }
   # Span liberty
   if (is.null(settings$span_liberty)) {
-    span_liberty <- c(1, Inf)
+    span_liberty <- c(1, nt)
   } else {
     span_liberty <- settings$span_liberty
   }
@@ -134,30 +167,8 @@ mmmSim <- function(data,
     fish_rate_by <- settings$fish_rate_by
   }
 
-  # Assembly values ------------------------------------------------------------
+  # Define index matrix --------------------------------------------------------
 
-  mT <- data$mT
-
-  # Check required data --------------------------------------------------------
-
-  # Tag releases
-  checkmate::assert_matrix(mT, mode = "integerish", any.missing = FALSE)
-  checkmate::assert_matrix(mT, ncols = 4, null.ok = FALSE)
-  checkmate::assert_numeric(mT, lower = 0, null.ok = FALSE)
-  checkmate::assert_true(colnames(mT)[1] == "release_step")
-  checkmate::assert_true(colnames(mT)[2] == "release_area")
-  checkmate::assert_true(colnames(mT)[3] == "group")
-  checkmate::assert_true(colnames(mT)[4] == "count")
-  # Check values
-  if (min(mT$release_step) > 0) cat("caution: time step not indexed from zero")
-
-  # Set index limits -----------------------------------------------------------
-
-  nt <- max(mT$release_step) + 1L # Index from zero for C++
-  na <- max(mT$release_area) + 1L # Index from zero for C++
-  ng <- max(mT$group) + 1L # Index from zero for C++
-
-  # Index matrix
   mI <- data$mI
   diag(mI) <- 0
 
@@ -168,7 +179,8 @@ mmmSim <- function(data,
   checkmate::assert_numeric(mI, lower = 0, upper = 1, null.ok = FALSE)
   checkmate::assert_true(nrow(mI) == ncol(mI))
 
-  # Set index limit
+  # Set index limit ------------------------------------------------------------
+
   np <- as.integer(sum(mI))
 
   # Set parameter index values -------------------------------------------------
@@ -176,21 +188,21 @@ mmmSim <- function(data,
   if (time_varying) {
     if (!block_length && !cycle_length) {
       npt <- nt
-      vpt <- c(seq_len(nt) - 1L) # Index from zero for C++
+      vpt <- c(seq_len(nt)) # Index from one for R
     } else if (block_length && !cycle_length) {
       npt <- ceiling(nt / block_length)
-      vpt <- rep(seq_len(npt) - 1L, each = block_length)[seq_len(nt)]
+      vpt <- rep(seq_len(npt), each = block_length)[seq_len(nt)]
     } else if (cycle_length && !block_length) {
       npt <- cycle_length
-      vpt <- rep(seq_len(npt) - 1L, ceiling(nt / npt))[seq_len(nt)]
+      vpt <- rep(seq_len(npt), ceiling(nt / npt))[seq_len(nt)]
     } else {
       npt <- cycle_length
-      vpt_cycle <- rep(seq_len(npt) - 1L, ceiling(nt / npt))[seq_len(nt)]
+      vpt_cycle <- rep(seq_len(npt), ceiling(nt / npt))[seq_len(nt)]
       vpt <- rep(vpt_cycle, each = block_length)[seq_len(nt)]
     }
   } else {
     npt <- 1L
-    vpt <- rep(0L, nt) # Index from zero for C++
+    vpt <- rep(1L, nt) # Index from one for R
   }
 
   # Create fishing rate indexes ------------------------------------------------
@@ -198,8 +210,8 @@ mmmSim <- function(data,
   if (!is.null(data$mF)) {
     nft <- nrow(data$mF)
     nfa <- ncol(data$mF)
-    vft <- rep(seq_len(nft) - 1L, each = ceiling(nt / nft))[seq_len(nt)]
-    vfa <- rep(seq_len(nfa) - 1L, each = ceiling(na / nfa))[seq_len(na)]
+    vft <- rep(seq_len(nft), each = ceiling(nt / nft))[seq_len(nt)]
+    vfa <- rep(seq_len(nfa), each = ceiling(na / nfa))[seq_len(na)]
     if (nt %% nft) {
       cat("warning: nft does not divide nt evenly \n")
     }
@@ -210,8 +222,8 @@ mmmSim <- function(data,
   } else if (!is.null(parameters$mF)) {
     nft <- nrow(parameters$mF)
     nfa <- ncol(parameters$mF)
-    vft <- rep(seq_len(nft) - 1L, each = ceiling(nt / nft))[seq_len(nt)]
-    vfa <- rep(seq_len(nfa) - 1L, each = ceiling(na / nfa))[seq_len(na)]
+    vft <- rep(seq_len(nft), each = ceiling(nt / nft))[seq_len(nt)]
+    vfa <- rep(seq_len(nfa), each = ceiling(na / nfa))[seq_len(na)]
     if (nt %% nft) {
       cat("warning: nft does not divide nt evenly \n")
     }
@@ -234,8 +246,7 @@ mmmSim <- function(data,
   # Fishing rate weighting
   if (!is.null(data$mW)) {
     mW <- data$mW
-  }
-  else {
+  } else {
     mW <- matrix(1, nrow = 1L, ncol = 1L)
   }
 
@@ -258,18 +269,18 @@ mmmSim <- function(data,
   # Set for time step
   if (nrow(mL) == 1L) {
     nlt <- 1L
-    vlt <- rep(0L, nt)
+    vlt <- rep(1L, nt) # Index from one for R
   } else {
     nlt <- nt
-    vlt <- c(seq_len(nt) - 1L)
+    vlt <- c(seq_len(nt))
   }
   # Set for areas
   if (ncol(mL) == 1L) {
     nla <- 1L
-    vla <- rep(0L, na)
+    vla <- rep(1L, na)
   } else {
     nla <- na
-    vla <- c(seq_len(na) - 1L)
+    vla <- c(seq_len(na))
   }
 
   # Create fishing rate weighting indexes --------------------------------------
@@ -277,29 +288,37 @@ mmmSim <- function(data,
   # Set for time step
   if (nrow(mW) == 1L) {
     nwt <- 1L
-    vwt <- rep(0L, nt)
+    vwt <- rep(1L, nt) # Index from one for R
   } else {
     nwt <- nrow(mW)
-    vwt <- rep(c(seq_len(nwt) - 1L), ceiling(nt / nwt))[seq_len(nt)]
+    vwt <- rep(c(seq_len(nwt)), ceiling(nt / nwt))[seq_len(nt)]
   }
   # Set for areas
   if (ncol(mW) == 1L) {
     nwa <- 1L
-    vwa <- rep(0L, na)
+    vwa <- rep(1L, na)
   } else {
     nwa <- na
-    vwa <- c(seq_len(na) - 1L)
+    vwa <- c(seq_len(na))
   }
 
   # Unpack arguments -----------------------------------------------------------
 
   # Array movement parameters
-  if (!is.null(parameters$aK)) {
-    aK <- parameters$aK
-  } else if (!is.null(parameters$aP)) {
+  if (!is.null(data$aK)) {
+    aK <- data$aK
+    aP <- create_movement_parameters(aK, m = mI)
+  } else if (!is.null(data$aP)) {
+    aP <- data$aP
     aK <- create_movement_rates(aP, m = mI)
+  } else if (!is.null(parameters$aK)) {
+    aK <- parameters$aK
+    aP <- create_movement_parameters(aK, m = mI)
+  } else if (!is.null(parameters$aP)) {
+    aP <- parameters$aP
+    aK <- create_movement_rates(parameters$aP, m = mI)
   } else {
-    stop("data or parameter must contain array aP")
+    stop("data or parameter must contain array aK or array aP")
   }
   # Matrix fishing mortality rate
   if (!is.null(data$mF)) {
@@ -334,27 +353,34 @@ mmmSim <- function(data,
     sC <- 0
   }
   # Vector fishing bias
-  if (!is.null(parameters$vB)) {
+  if (!is.null(data$vB)) {
+    vB <- data$vB
+  } else if (!is.null(parameters$vB)) {
     vB <- parameters$vB
   } else {
     vB <- rep(1, ng)
   }
   # Scalar negative binomial dispersion
-  if (!is.null(parameters$sD)) {
+  if (!is.null(data$sD)) {
+    sD <- data$sD
+  } else if (!is.null(parameters$sD)) {
     sD <- parameters$sD
   } else {
     sD <- 1L
   }
+
   # Check arguments ------------------------------------------------------------
 
-  # Movement parameter array
-  checkmate::assert_array(aP, mode = "double", any.missing = FALSE, d = 3)
-  checkmate::assert_true(dim(aP)[1] == npt, na.ok = FALSE)
-  checkmate::assert_true(dim(aP)[2] == np, na.ok = FALSE)
-  checkmate::assert_true(dim(aP)[3] == ng, na.ok = FALSE)
+  # Movement rate array
+  checkmate::assert_array(aK, mode = "double", any.missing = FALSE, d = 4)
+  checkmate::assert_numeric(aK, lower = 0, upper = 1, len = na * na * npt * ng)
+  checkmate::assert_true(dim(aK)[1] == na, na.ok = FALSE)
+  checkmate::assert_true(dim(aK)[2] == na, na.ok = FALSE)
+  checkmate::assert_true(dim(aK)[3] == npt, na.ok = FALSE)
+  checkmate::assert_true(dim(aK)[4] == ng, na.ok = FALSE)
   # Fishing rate matrix
   checkmate::assert_matrix(mF, mode = "double", any.missing = FALSE)
-  checkmate::assert_numeric(mF, lower = 0, null.ok = TRUE)
+  checkmate::assert_numeric(mF, lower = 0, null.ok = FALSE)
   checkmate::assert_true(dim(mF)[1] == nft, na.ok = FALSE)
   checkmate::assert_true(dim(mF)[2] == nfa, na.ok = FALSE)
 
@@ -369,10 +395,20 @@ mmmSim <- function(data,
   # Other transformations
   sA <- (1 - sC)
 
+  # Initialize arrays ----------------------------------------------------------
+
+  aN <- array(0, dim = c(na, nt, ng, na, nt))
+  aS <- array(0, dim = c(na, nt, ng))
+  aR <- array(0, dim = c(na, nt, ng, na, nt))
+
   # Populate aN ----------------------------------------------------------------
 
   for (i in seq_len(ncol(tmT))) {
-    aN[tmT[2, i], tmT[1, i], tmT[3, i], tmT[2, i], tmT[1, i]] = sA * tmT[4, i]
+    aN[tmT[2, i] + 1L,
+       tmT[1, i] + 1L,
+       tmT[3, i] + 1L,
+       tmT[2, i] + 1L,
+       tmT[1, i] + 1L] = sA * tmT[4, i]
   }
 
   # Compute aS -----------------------------------------------------------------
@@ -388,6 +424,7 @@ mmmSim <- function(data,
 
   # Compute aR -----------------------------------------------------------------
 
+  cat("only poisson error family implemented")
   for (mt in seq_len(nt)) {
     for (ma in seq_len(na)) {
       for (mg in seq_len(ng)) {
@@ -405,29 +442,21 @@ mmmSim <- function(data,
               }
             }
           }
+          # Compute rt_min and rt_max from span_liberty
+          rt_min <- mt + span_liberty[1]
+          rt_max <- mt + span_liberty[2] + 1L
+          if (rt_max > nt) rt_max <- nt
+          if (rt_min > rt_max) rt_min <- rt_max
           # Compute predicted recoveries
-          for (rt in c(mt:nt)) {
-            # Was the recapture time within the span at liberty?
-            if (rt > (mt + span_liberty[1] - 1L)) {
-              if (rt < (mt + span_liberty[2] + 1L)) {
-                for (ra in seq_len(na)) {
-                  # Compute the recovery array
-                  sR <- aN[ra, rt, mg, ma, mt] *
-                    (1L - exp(-vB[mg] * tmF[vfa[ra], vft[rt]] *
-                                     tmW[vwa[ra], vwt[rt]])) *
-                    tmL[vla[ra], vlt[rt]]
-                  if (error_family) {
-                    if (sR > 0) {
-                      sR <- rnbinom(1L, mu = sR, size = sD / sR)
-                    } else {
-                      sR <- 0L
-                    }
-                  } else {
-                    sR <- rpois(1L, sR)
-                  }
-                  aR[ra, rt, mg, ma, mt] <- round(sR)
-                }
-              }
+          for (rt in c(rt_min:rt_max)) {
+            for (ra in seq_len(na)) {
+              # Compute the recovery array
+              sR <- aN[ra, rt, mg, ma, mt] *
+                (1L - exp(-vB[mg] * tmF[vfa[ra], vft[rt]] *
+                            tmW[vwa[ra], vwt[rt]])) *
+                tmL[vla[ra], vlt[rt]]
+                sR <- rpois(1L, sR)
+              aR[ra, rt, mg, ma, mt] <- round(sR)
             }
           }
         } # End if()
@@ -439,7 +468,7 @@ mmmSim <- function(data,
 
   # Initialize
   mR <- matrix(0L, nrow = sum(as.logical(aR)), ncol = 6)
-  release_names <- c("release_step", "release_area", "group_index")
+  release_names <- c("release_step", "release_area", "group")
   recover_names <- c("recover_step", "recover_area", "count")
   colnames(mR) <- c(release_names, recover_names)
   # Populate
@@ -462,18 +491,15 @@ mmmSim <- function(data,
 
   # Assemble lists -------------------------------------------------------------
 
-  # Data
-  data_list <- list(
+  # Simulation list
+  simulation_list <- list(
+    aP = aP,
+    aK = aK,
     mT = mT,
     mR = mR,
     mI = mI,
     mL = mL,
-    mW = mW
-  )
-  # Parameters
-  parameter_list <- list(
-    aP = aP,
-    aK = aK,
+    mW = mW,
     mF = mF,
     sM = sM,
     sH = sH,
@@ -482,15 +508,13 @@ mmmSim <- function(data,
     sD = sD
   )
   # Settings
-  settings_list <- list()
-
+  settings_list <- settings
 
   # Return list ----------------------------------------------------------------
 
   cat("\nreturning mmmSim object\n")
   structure(list(
-    data        = data_list,
-    parameters  = parameters_list,
+    simulation  = simulation_list,
     settings    = settings_list),
     class       = c("mmmSim"))
 }
