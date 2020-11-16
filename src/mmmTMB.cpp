@@ -208,6 +208,7 @@ Type objective_function<Type>::operator() ()
           rt_min = mt + span_liberty(0);
           rt_max = mt + span_liberty(1) + 1;
           if (rt_max > nt) { rt_max = nt; }
+          if (rt_min > rt_max) { rt_min = rt_max; }
           // Compute predicted recoveries and jnll
           for (int rt = rt_min; rt < rt_max; rt++) {
             for (int ra = 0; ra < na; ra++) {
@@ -230,7 +231,7 @@ Type objective_function<Type>::operator() ()
                   jnll -= dnbinom_robust(
                     aR(ra, rt, mg, ma, mt),
                     log(aRhat(ra, rt, mg, ma, mt)),
-                    log(aRhat(ra, rt, mg, ma, mt)) + log_sD,
+                    log(aRhat(ra, rt, mg, ma, mt)) - log_sD,
                     true);
                   break;
                 default:
