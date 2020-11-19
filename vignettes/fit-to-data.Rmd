@@ -21,20 +21,19 @@ knitr::opts_chunk$set(
 library(mmmTMB)
 ```
 
-# Wrangle Tag Data
-
-## Load Tag Data
-```{r load-tag-data}
+# Load Data
+```{r load-data}
 # Use observational data
-# TODO: Switch to simulated data
 load("~/github/sablefishData/data/sable_released.rda")
 load("~/github/sablefishData/data/sable_recovered.rda")
+load("~/github/sablefishData/data/sable_capture_rate_region.rda")
+load("~/github/sablefishData/data/sable_report_ratio.rda")
 
 ```
 
-## Create mmmTags object
-```{r create-mmmtags}
-# Prepare arguments
+# Yearly Fit
+```{r yearly-fit}
+# Create tags object
 cols <- list(
   release_date = "Release_Date",
   release_area = "Release_Region",
@@ -42,120 +41,76 @@ cols <- list(
   recover_area = "Recovery_Region",
   id = "Tag_ID"
 )
-# Call mmmTags()
 tags <- mmmTags(x = sable_released,
                 y = sable_recovered,
                 cols = cols,
                 step = "year",
                 limits = c("1979-01-01", "2018-12-31"))
+x <- tags$x
+y <- tags$y
 
-```
-
-## Load Rates Data
-```{r load-rates-data}
-# Use observational data
-# TODO: Switch to simulated data
-load("~/github/sablefishData/data/sable_capture_rate_region.rda")
-load("~/github/sablefishData/data/sable_report_ratio.rda")
-
-```
-
-## Create mmmRates Objects
-```{r create-mmmrates}
 # Prepare fishing mortality rates
-x <- sable_capture_rate_region
+f_long <- sable_capture_rate_region
 cols <- list(date = "Year", area = "Region", rate = "Capture_Inst_Year")
 reps <- 1 # Update to 12 for monthly fit
 lims <- c(1979, 2018)
-mF <- mmmRates(x, cols, reps, lims, inst = TRUE)
+f <- mmmRates(f_long, cols, reps, lims, inst = TRUE)
 
 # Prepare tag reporting rates
-x <- dplyr::distinct(sable_report_ratio, Year, Region, Report_Ratio)
+l_long <- dplyr::distinct(sable_report_ratio, Year, Region, Report_Ratio)
 cols <- list(date = "Year", area = "Region", rate = "Report_Ratio")
 reps <- 1 # Update to 12 for monthly fit
 lims <- c(1979, 2018)
-mL <- mmmRates(x, cols, reps, lims, inst = FALSE)
+l <- mmmRates(l_long, cols, reps, lims, inst = FALSE)
 
-```
+# Create movement index
+z <- mmmIndex(3, pattern = 0)
 
-## Create mmmWeights Object
-```{r create-mmmweights}
-# Prepare monthly weighting of annual fishing rate by tag recoveries
-# TODO: Update for monthly fit
+# Define remaining data
+m <- 0.1 # Divide by 12 for monthly
+h <- 0.02 # Divide by 12 for monthly
+u <- 0.1
 
-# mW <- mmmWeights(tags, step = "month", nrows = 12L)
-
-```
-
-## Create Movement Index Matrix
-```{r create-mmmindex}
-# Three area neighbours
-mI <- mmmIndex(3, pattern = 0)
-
-
-```
-
-## Define Remaining Data
-```{r create-remaining-data}
-# Remaining data
-sM <- 0.1 # Divide by 12 for monthly
-sH <- 0.02 # Divide by 12 for monthly
-sC <- 0.1
-
-```
-
-
-## Populate Data List
-```{r create-data-list}
+# Populate data list
 data_list <- list(
-  tags = tags,
-  mI = mI,
-  mL = mL,
-  # mW = mW,
-  mF = mF,
-  sM = sM,
-  sH = sH,
-  sC = sC
+  x = x,
+  y = y,
+  z = z,
+  l = l,
+  f = f,
+  m = m,
+  h = h,
+  u = u
 )
 
-```
-
-## Populate Parameter List
-```{r create-parameter-list}
+# Optionally specify initial parameter values
 parameters_list <- NULL
 
-
-```
-
-## Population Settings List
-```{r create-settings-list}
-settings_list <- mmmSet(
-  error_family = 0, 
-  span_liberty = c(1, 40),
-  nlminb_loops = 5,
-  newton_steps = 5,
-  openmp_cores = 6)
-
+# Define settings
 settings_list <- mmmSet(
   error_family = 1,
-  span_liberty = c(1, 40),
+  max_liberty  = 40,
   nlminb_loops = 5,
-  newton_steps = 5,
+  newton_iters = 5,
   openmp_cores = 6)
 
-```
+# Assign for manual fitting
+data <- data_list
+parameters <- parameters_list
+random <- NULL
+map <- NULL
+settings <- settings_list
+control <- mmmControl(trace = 5)
 
-
-## Fit To Data
-```{r fit-to-data}
 # Fit
-fit <- mmmFit(
-  data = data_list,
-  parameters = parameters_list,
-  random = NULL,
-  map = NULL,
-  settings = settings_list,
-  control = mmmControl(trace = 5)
-)
+# fit <- mmmFit(
+#   data = data_list,
+#   parameters = parameters_list,
+#   random = NULL,
+#   map = NULL,
+#   settings = settings_list,
+#   control = mmmControl(trace = 5)
+# )
 
 ```
+
