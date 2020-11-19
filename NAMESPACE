@@ -2,6 +2,9 @@
 
 S3method(barplot,mmmTMB)
 S3method(plot,mmmTMB)
+export(create_dispersion_results)
+export(create_fishing_results)
+export(create_mortality_results)
 export(create_movement_parameters)
 export(create_movement_rates)
 export(create_movement_results)
