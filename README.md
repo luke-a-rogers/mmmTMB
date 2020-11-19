@@ -11,7 +11,8 @@ public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostat
 [![Coverage
 status](https://codecov.io/gh/luke-a-rogers/mmmTMB/branch/master/graph/badge.svg)](https://codecov.io/github/luke-a-rogers/mmmTMB?branch=master)
 
-An R package to fit Markov movement models using TMB
+An R package to fit Markov movement models (MMM) via Template Model
+Builder
 
 ## Installation
 
