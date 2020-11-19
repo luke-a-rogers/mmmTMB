@@ -327,9 +327,9 @@ mmmTags <- function (x,
     recover_step,
     recover_area)
 
-  # Create mT ------------------------------------------------------------------
+  # Create x -------------------------------------------------------------------
 
-  mT <- x %>%
+  x <- x %>%
     dplyr::group_by(release_step, release_area, group) %>%
     dplyr::mutate(count = dplyr::n()) %>%
     dplyr::ungroup() %>%
@@ -337,14 +337,14 @@ mmmTags <- function (x,
     dplyr::arrange(release_step, release_area, group) %>%
     as.matrix()
   # Confirm mode
-  if (typeof(mT) != "integer") {
-    mode(mT) <- "integer"
+  if (typeof(x) != "integer") {
+    mode(x) <- "integer"
   }
-  cat("mT has", nrow(mT), "rows and", sum(mT[, "count"]), "tag releases\n")
+  cat("x has", nrow(x), "rows and", sum(x[, "count"]), "tag releases\n")
 
-  # Create mR ------------------------------------------------------------------
+  # Create y ------------------------------------------------------------------
 
-  mR <- y %>%
+  y <- y %>%
     dplyr::group_by(
       release_step,
       release_area,
@@ -362,10 +362,10 @@ mmmTags <- function (x,
       recover_area) %>%
     as.matrix()
   # Confirm mode
-  if (typeof(mR) != "integer") {
-    mode(mR) <- "integer"
+  if (typeof(y) != "integer") {
+    mode(y) <- "integer"
   }
-  cat("mR has", nrow(mR), "rows and", sum(mR[, "count"]), "tag recoveries\n")
+  cat("y has", nrow(y), "rows and", sum(y[, "count"]), "tag recoveries\n")
 
   # Stop the clock -------------------------------------------------------------
 
@@ -374,8 +374,8 @@ mmmTags <- function (x,
   # Return list of class mmmTags -----------------------------------------------
 
   return(structure(list(
-    mT = mT,
-    mR = mR,
+    x = x,
+    y = y,
     cols = cols,
     groups = groups,
     step = step,
@@ -556,7 +556,7 @@ mmmWeights <- function (tags, step = "month", nrows = 12L) {
 
   # Unpack arguments -----------------------------------------------------------
 
-  mR <- as.data.frame(tags$mR)
+  y <- as.data.frame(tags$y)
   tag_step <- tags$step
 
   # Check time steps -----------------------------------------------------------
@@ -567,13 +567,13 @@ mmmWeights <- function (tags, step = "month", nrows = 12L) {
 
   # Create the data frame ------------------------------------------------------
 
-  area <- rep(c(seq_len(max(mR$recover_area) + 1L) - 1L), each = nrows)
-  step <- rep(c(seq_len(nrows) - 1L), max(mR$recover_area) + 1L)
+  area <- rep(c(seq_len(max(y$recover_area) + 1L) - 1L), each = nrows)
+  step <- rep(c(seq_len(nrows) - 1L), max(y$recover_area) + 1L)
   d <- data.frame(recover_area = area, weight_step = step)
 
   # Create the weights matrix --------------------------------------------------
 
-  mW <- mR %>%
+  w <- y %>%
     dplyr::mutate(weight_step = recover_step %% 12L) %>%
     dplyr::select(recover_area, weight_step, count) %>%
     dplyr::arrange(recover_area, weight_step) %>%
@@ -593,7 +593,7 @@ mmmWeights <- function (tags, step = "month", nrows = 12L) {
 
   # Return the weights matrix --------------------------------------------------
 
-  return(structure(mW, class = "mmmWeights"))
+  return(structure(w, class = "mmmWeights"))
 }
 
 
@@ -637,39 +637,39 @@ mmmIndex <- function (n, pattern = NULL, allow = NULL, disallow = NULL) {
   checkmate::assert_matrix(allow, any.missing = FALSE, null.ok = TRUE)
   checkmate::assert_matrix(allow, ncols = 2, null.ok = TRUE)
   # Initialize matrix
-  m <- matrix(0L, nrow = n, ncol = n)
+  z <- matrix(0L, nrow = n, ncol = n)
   # Default
   if (is.null(pattern) & is.null(allow)) {
     # Immediate neighbours only
     for (i in seq_len(n - 1L)) {
-      m[i, i + 1L] <- 1L
-      m[i + 1L, i] <- 1L
+      z[i, i + 1L] <- 1L
+      z[i + 1L, i] <- 1L
     }
   }
   # Add pattern
   if (!is.null(pattern)) {
     if (pattern) {
       for (i in seq_len(n - 1L)) {
-        m[i, i + 1L] <- 1L
-        m[i + 1L, i] <- 1L
+        z[i, i + 1L] <- 1L
+        z[i + 1L, i] <- 1L
       }
     } else {
-      m <- matrix(1L, nrow = n, ncol = n)
-      diag(m) <- 0L
+      z <- matrix(1L, nrow = n, ncol = n)
+      diag(z) <- 0L
     }
   }
   # Allow indexes
   if (!is.null(allow)) {
-    m[allow] <- 1L
-    diag(m) <- 0L
+    z[allow] <- 1L
+    diag(z) <- 0L
   }
   # Disallow indexes
   if (!is.null(disallow)) {
-    m[disallow] <- 0L
-    diag(m) <- 0L
+    z[disallow] <- 0L
+    diag(z) <- 0L
   }
   # Return
-  return(structure(m, class = "mmmIndex"))
+  return(structure(z, class = "mmmIndex"))
 }
 
 #' Map Values to Groups
@@ -708,9 +708,9 @@ mmmGroup <- function (x, groups) {
 
   #--------------- Create index -----------------------------------------------#
 
-  z <- c(seq_along(groups) - 1L)
+  s <- c(seq_along(groups) - 1L)
   x <- data.frame(value = x)
-  d <- data.frame(value = unlist(groups), index = rep(z, lengths(groups)))
+  d <- data.frame(value = unlist(groups), index = rep(s, lengths(groups)))
 
   #--------------- Return vector ----------------------------------------------#
 
