@@ -2,12 +2,11 @@
 % Please edit documentation in R/fit.R
 \name{mmmFit}
 \alias{mmmFit}
-\title{Fit a Markovian Movement Model}
+\title{Fit a Markov Movement Model}
 \usage{
 mmmFit(
   data,
   parameters = NULL,
-  random = NULL,
   map = NULL,
   settings = mmmSet(),
   control = mmmControl()
@@ -18,17 +17,14 @@ mmmFit(
 
 \item{parameters}{\code{\link[=list]{list()}} Initial parameter values. See Details.}
 
-\item{random}{\code{\link[=character]{character()}} Names of parameters to estimate as
-random effects.}
-
 \item{map}{\code{\link[=list]{list()}} Values to override \code{map} defaults.
-See \code{TMB::MakeADFun()}.}
+See \code{\link[TMB:MakeADFun]{TMB::MakeADFun()}}.}
 
 \item{settings}{\code{\link[=list]{list()}} Values that help define the model.
-See \code{mmmSet()}.}
+See \code{\link[=mmmSet]{mmmSet()}}.}
 
 \item{control}{\code{\link[=list]{list()}} Optimization control options to pass to
-\code{stats::nlminb()}. See \code{mmmControl()}.}
+\code{\link[stats:nlminb]{stats::nlminb()}}. See \code{\link[=mmmControl]{mmmControl()}}.}
 }
 \value{
 A list of class \code{mmmFit}.
@@ -38,47 +34,43 @@ Estimate movement rates from single-mark single-recapture
 tagging data.
 }
 \details{
-The \code{\link[=list]{list()}} argument \code{data} must contain
+The \code{\link[=list]{list()}} argument \code{data} must contain:
 \itemize{
-\item \code{tags} a list of class \code{mmmTags} (recommended: see
-\code{mmmTags()}) OR both \code{mT} and \code{mR} integer matrices
-of tag release and recovery counts, respectively, formatted as
-described in \code{\link[=mmmTags]{mmmTags()}}
-\item \code{mI} a square binary index matrix representing movement
-between areas (from rows to columns). Ones represent movement that
-is allowed from one time step to the next. Zeros off the diagonal
-represent disallowed movement. Numbers on the diagonal are ignored
-because self-movement is always allowed. See \code{\link[=mmmIndex]{mmmIndex()}}.
+\item \code{x} An integer matrix of tag release counts formatted
+as described in \code{\link[=mmmTags]{mmmTags()}}.
+\item \code{y} An integer matrix of tag recovery counts formatted
+as described in \code{\link[=mmmTags]{mmmTags()}}.
+\item \code{z} A square binary index matrix that indicates allowed
+direct movement between areas (from rows to columns) from one
+time step to the next. Ones off the diagonal indicate allowed
+direct movement. Zeros off the diagonal represent disallowed
+direct movement. Numbers on the diagonal are ignored because
+self-movement is always allowed. See \code{\link[=mmmIndex]{mmmIndex()}}.
+\item \code{h} The (positive) scalar instantaneous tag loss rate.
+\item \code{u} The scalar proportion of tags lost during release.
 }
-The list argument \code{data} may optionally contain
+The list argument \code{data} may optionally contain:
 \itemize{
-\item \code{mL} a matrix of tag reporting rates (proportions)
-in which the time step is given by the row and the area is
-given by the column. Defaults to ones (full reporting). See
-\code{\link[=mmmRates]{mmmRates()}}.
-\item \code{mW} a matrix of (monthly) weights for the fishing
-mortality rates in matrix \code{mF}. Defaults to ones (equal fishing
-rates across calendar months). See \code{\link[=mmmWeights]{mmmWeights()}}.
-\item \code{mF} a matrix of fishing mortality rates. Estimated as
-parameter(s) if missing. See \code{parameters} and \code{settings}.
-See \code{\link[=mmmRates]{mmmRates()}}.
-\item \code{sM} scalar natural mortality rate. Estimated if missing.
-See \code{parameters}.
-\item \code{sH} scalar tag loss rate. Estimated if missing.
-See \code{parameters}.
-\item \code{sC} scalar initial tag loss rate (proportion). Estimated
-if missing. See \code{parameters}.
+\item \code{l} A matrix of tag reporting rates (proportions).
+Defaults to one if omitted (full reporting). See \code{\link[=mmmRates]{mmmRates()}}.
+\item \code{w} A matrix of fishing mortality rate weights. Useful
+when the tag time step is finer than the fishing rate step.
+Defaults to one (equal fishing rates across tag time steps
+within a fishing rate time step). See \code{\link[=mmmWeights]{mmmWeights()}}.
+\item \code{f} A matrix of fishing mortality rates. Estimated as
+parameter(s) if omitted. See \code{parameters} and \code{settings}.
+Also see \code{\link[=mmmRates]{mmmRates()}}.
+\item \code{m} The scalar instantaneous natural mortality rate.
+Estimated if omitted. One or both of \code{f} and \code{m} must be
+provided. See \code{parameters}.
 }
 The list argument \code{parameters} may optionally contain the initial
-values
+values:
 \itemize{
-\item \code{aP} an array of movement parameters. See TBD.
-\item \code{mF} a matrix of fishing mortality rates. See \code{settings}.
-\item \code{sM} scalar natural mortality rate.
-\item \code{sH} scalar tag loss rate.
-\item \code{sC} scalar initial tag loss rate (proportion).
-\item \code{vB} vector fishing mortality bias (across areas).
-\item \code{sD} scalar negative binomial dispersion.
+\item \code{p} An array of movement parameters. See TBD.
+\item \code{f} A matrix of fishing mortality rates. See \code{settings}.
+\item \code{m} The scalar instantaneous natural mortality rate.
+\item \code{k} The scalar negative binomial dispersion.
 }
 }
 \examples{

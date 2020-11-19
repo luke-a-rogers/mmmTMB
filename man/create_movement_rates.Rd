@@ -4,12 +4,12 @@
 \alias{create_movement_rates}
 \title{Create Movement Rate Array}
 \usage{
-create_movement_rates(a, m)
+create_movement_rates(p, z)
 }
 \arguments{
-\item{a}{Numeric array. Movement parameters. (Not transposed).}
+\item{p}{Numeric array. Movement parameters. (Not transposed).}
 
-\item{m}{Integer matrix. Movement indexes. (Not transposed).}
+\item{z}{Integer matrix. Movement indexes. (Not transposed).}
 }
 \value{
 \code{\link[=array]{array()}} Movement rates

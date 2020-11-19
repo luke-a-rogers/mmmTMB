@@ -6,24 +6,24 @@
 \usage{
 mmmSet(
   error_family = c(nb1 = 1, poisson = 0),
-  span_liberty = c(1, 1000),
+  min_liberty = 1,
+  max_liberty = 1000,
   time_varying = 0,
   time_process = c(none = 0, rw = 1),
   cycle_length = 0,
   block_length = 0,
-  fish_rate_by = c(none = 0, area = 1, block = 2, both = 3),
   results_step = 1,
   nlminb_loops = 5,
-  newton_steps = 5,
+  newton_iters = 5,
   openmp_cores = 1
 )
 }
 \arguments{
-\item{error_family}{Integer. \code{0} = Poisson; \code{1} = NB1.}
+\item{error_family}{Integer. \code{0} = Poisson; \code{1} = NB1;
+\code{2} = NB2.}
 
-\item{span_liberty}{Integer. Min and max time steps at liberty before
-recapture. The initial time at liberty \code{span_liberty[1]} should
-agree in duration with \code{days_liberty} from \code{mmmTags()}.}
+\item{max_liberty}{Integer. Max time steps at liberty before
+recapture.}
 
 \item{time_varying}{Integer. \code{0} = None; \code{1} = Time varying
 movement rates.}
@@ -35,19 +35,15 @@ binomial (NB1).}
 
 \item{block_length}{Integer. Block length for movement rate.}
 
-\item{fish_rate_by}{Integer. Estimate F \code{0} = As a single value;
-\code{1} = By areas; \code{2} = By time steps as blocks;
-\code{3} = By both areas and blocks.}
-
 \item{results_step}{Integer. Results time step as a multiple of the data
 time step.}
 
 \item{nlminb_loops}{Integer. Number of times to run \code{\link[stats:nlminb]{stats::nlminb()}}
 optimization.}
 
-\item{newton_steps}{Integer. Number of Newton optimization steps.}
-
 \item{openmp_cores}{Integer. Number of parallel cores for TMB.}
+
+\item{newton_steps}{Integer. Number of Newton optimization steps.}
 }
 \value{
 A list of settings for \code{mmmFit()}

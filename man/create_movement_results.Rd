@@ -4,12 +4,12 @@
 \alias{create_movement_results}
 \title{Create Movement Results}
 \usage{
-create_movement_results(v, m, np, npt, ng, mI, pow, draws)
+create_movement_results(vtp, mtp, np, npt, ng, z, pow, draws)
 }
 \arguments{
-\item{v}{\code{\link[=numeric]{numeric()}} Vector of movement parameters in transpose order.}
+\item{vtp}{\code{\link[=numeric]{numeric()}} Vector of movement parameters in transpose order.}
 
-\item{m}{\code{\link[=matrix]{matrix()}} Matrix of movement parameter covariances in
+\item{mtp}{\code{\link[=matrix]{matrix()}} Matrix of movement parameter covariances in
 transpose order.}
 
 \item{np}{\code{\link[=integer]{integer()}} Number of movement parameters per step and group.}
@@ -18,7 +18,7 @@ transpose order.}
 
 \item{ng}{\code{\link[=integer]{integer()}} Number of groups.}
 
-\item{mI}{\code{\link[=matrix]{matrix()}} Matrix index. See \code{\link[=mmmIndex]{mmmIndex()}}.}
+\item{z}{\code{\link[=matrix]{matrix()}} Matrix index. See \code{\link[=mmmIndex]{mmmIndex()}}.}
 
 \item{pow}{\code{\link[=integer]{integer()}} Results step as a multiple of tag time step.
 A matrix power.}
