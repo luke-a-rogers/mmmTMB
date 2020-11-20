@@ -25,9 +25,10 @@ Simulate Tag Recovery Data
 TBD
 }
 \examples{
-sim_mF <- as.matrix(0.04)
-sim_sM <- 0.1
-d <- list(mT = sim_mT, mI = sim_mI, aK = sim_aK, mF = sim_mF, sM = sim_sM)
+sim_x <- create_release_matrix()
+sim_f <- as.matrix(0.04)
+sim_m <- 0.1
+d <- list(x = sim_x, z = sim_z, r = sim_r, f = sim_f, m = sim_m)
 s1 <- mmmSim(d)
 
 }
