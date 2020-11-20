@@ -20,7 +20,7 @@ check_data <- function (data = NULL) {
   checkmate::assert_numeric(data$y, lower = 0)
   checkmate::assert_numeric(data$z, lower = 0, upper = 1)
   checkmate::assert_numeric(data$l, lower = 0, upper = 1, null.ok = TRUE)
-  checkmate::assert_numeric(data$w, lower = 0, upper = 1, null.ok = TRUE)
+  checkmate::assert_numeric(data$w, lower = 0, upper = 12, null.ok = TRUE)
   checkmate::assert_numeric(data$h, lower = 0, len = 1)
   checkmate::assert_numeric(data$u, lower = 0, upper = 1, len = 1)
   # Optionally parameters
@@ -81,7 +81,7 @@ check_data <- function (data = NULL) {
   checkmate::assert_matrix(w, any.missing = FALSE)
   checkmate::assert_numeric(w, lower = 0)
   # checkmate::assert_true(ncol(w) == 1 || ncol(w) == na)
-  checkmate::assert_true(all(colSums(w) == 1))
+  checkmate::assert_true(all(colMeans(w) == 1))
 
 }
 
