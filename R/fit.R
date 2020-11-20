@@ -254,7 +254,7 @@ mmmFit <- function (data,
   adfun <- TMB::MakeADFun(data = tmb_data,
                           parameters = tmb_parameters,
                           map = tmb_map,
-                          random = tmb_random,
+                          # random = tmb_random,
                           DLL = "mmmTMB")
   tictoc::toc()
 
@@ -308,6 +308,7 @@ mmmFit <- function (data,
   sd_report <- TMB::sdreport(adfun)
   convergence <- get_convergence_diagnostics(sd_report)
   convergence$mgc <- max(abs(convergence$final_grads))
+  cat("positive definite hessian:", sd_report$pdHess, "\n")
   cat("mgc:", convergence$mgc, "\n")
   tictoc::toc()
 
@@ -384,7 +385,7 @@ mmmFit <- function (data,
     data       = data,
     parameters = parameters,
     settings   = settings,
-    random     = random,
+    # random     = random,
     map        = map,
     control    = control
   )
