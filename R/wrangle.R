@@ -534,7 +534,7 @@ mmmRates <- function (x,
 #' @description Create a weighting for the fishing mortality rate when the
 #' fishing mortality rate is recorded at a larger time step than the tag
 #' release and recovery time step. The weighting is based on tag recoveries
-#' at the tag time step.
+#' at the tag time step. Weights average to one for a given area.
 #'
 #' @param tags [mmmTMB()] See \code{mmmTags()}.
 #' @param step [character()] Currently implemented for \code{"month"} only.
@@ -590,6 +590,10 @@ mmmWeights <- function (tags, step = "month", nrows = 12L) {
     tidyr::pivot_wider(names_from = recover_area, values_from = weight) %>%
     dplyr::select(-weight_step) %>%
     as.matrix()
+
+  # Convert from (sum to one) to (average to one) ------------------------------
+
+  w <- w * 12
 
   # Return the weights matrix --------------------------------------------------
 
