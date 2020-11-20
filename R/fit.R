@@ -145,8 +145,8 @@ mmmFit <- function (data,
 
   # Create fishing rate indexes ------------------------------------------------
 
-  nft <- nrow(f)
-  nfa <- ncol(f)
+  if (!is.null(f)) nft <- nrow(f) else nft <- 1L
+  if (!is.null(f)) nfa <- ncol(f) else nfa <- 1L
   vft <- rep(seq_len(nft) - 1L, each = ceiling(nt / nft))[seq_len(nt)]
   vfa <- rep(seq_len(nfa) - 1L, each = ceiling(na / nfa))[seq_len(na)]
   if (nt %% nft) cat("caution: nft does not divide nt evenly\n")
@@ -353,6 +353,7 @@ mmmFit <- function (data,
   fishing_rate_list <- create_fishing_results(
     vlogit_exp_neg_tf = vlogit_exp_neg_tf_fit,
     mlogit_exp_neg_tf_cov = mlogit_exp_neg_tf_cov,
+    results_step = results_step,
     nft = nft,
     nfa = nfa,
     estimate = estimate_f
