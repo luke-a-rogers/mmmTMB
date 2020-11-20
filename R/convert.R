@@ -430,6 +430,7 @@ create_mortality_results <- function (logit_exp_neg_m,
 #'
 create_fishing_results <- function (vlogit_exp_neg_tf,
                                     mlogit_exp_neg_tf_cov,
+                                    results_step,
                                     nft,
                                     nfa,
                                     estimate) {
