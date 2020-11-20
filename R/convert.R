@@ -389,11 +389,11 @@ create_mortality_results <- function (logit_exp_neg_m,
     # Standard error
     logit_exp_neg_m_draws <- rnorm(
       1000,
-      logit_exp_neg_m_fit,
+      logit_exp_neg_m,
       logit_exp_neg_m_se
     )
     m_draws <- -log(invlogit(logit_exp_neg_m_draws))
-    m_results_se <- sd(m_draws * result_step, na.rm = TRUE)
+    m_results_se <- sd(m_draws * results_step, na.rm = TRUE)
     # Rename
     names(m_fit) <- NULL
     names(m_results) <- NULL
@@ -514,8 +514,7 @@ create_dispersion_results <- function (log_k,
     k_fit <- exp(log_k)
     k_results <- k_fit
     # Compute SE
-    log_k_se <- summary(sd_report)["log_k", 2, drop = FALSE]
-    log_k_draws <- rnorm(1000, log_k_fit, log_k_se)
+    log_k_draws <- rnorm(1000, log_k, log_k_se)
     k_results_se <- sd(exp(log_k_draws), na.rm = TRUE)
     # Rename
     names(k_fit) <- NULL
