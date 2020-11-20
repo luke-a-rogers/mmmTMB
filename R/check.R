@@ -56,10 +56,6 @@ check_data <- function (data = NULL) {
   checkmate::assert_true(colnames(data$y)[6] == "count")
   # Index matrix
   checkmate::assert_true(all(diag(data$z) == 0L))
-  # Check values
-  if (min(data$x[, "release_step"]) > 0) {
-    cat("caution: x time step not indexed from zero")
-  }
 
   # Check index matrix ---------------------------------------------------------
 
@@ -140,7 +136,7 @@ check_settings <- function (settings) {
   checkmate::assert_list(settings, null.ok = FALSE)
   # Check error family
   checkmate::assert_integerish(settings$error_family, len = 1)
-  checkmate::assert_integerish(settings$error_family, lower = 0, upper = 1)
+  checkmate::assert_integerish(settings$error_family, lower = 0, upper = 2)
   checkmate::assert_integerish(settings$error_family, any.missing = FALSE)
   # Check max liberty
   checkmate::assert_integerish(settings$max_liberty, lower = 0, len = 1)
