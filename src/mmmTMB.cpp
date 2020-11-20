@@ -8,8 +8,8 @@ array<Type> create_rates(array<Type> tp, matrix<int> tz) {
   int na = tz.rows(); // Matrix tz has rows = na, and cols = na
   int npt = tp.dim(1); // Array tp has dim = c(np, npt, ng)
   int ng = tp.dim(2);
-  int cp_num; // Current parameter in the numerator (?)
-  int cp_den; // Current parameter in the denominator (?)
+  int cp_num; // Current parameter in the numerator
+  int cp_den; // Current parameter in the denominator
   Type rates_sum; // Movement rate sum
   Type denom_sum; // Denominator sum
   // Initialize array
