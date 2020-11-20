@@ -119,7 +119,7 @@ Type objective_function<Type>::operator() ()
 
   // Matrices and arrays use column-major indexing in TMB (first index fastest)
   array<Type> Y(na, nt, ng, na, nt); // Tag recoveries
-  array<Type> N(na, nt, ng, na, nt); // Tag abundance (predicted)
+  array<Type> N(na, nt, ng, na, nt); // Tag abundance
   array<Type> R(na, na, npt, ng); // Movement rates
   array<Type> S(na, nt, ng); // Survival rates
   array<Type> Yhat(na, nt, ng, na, nt); // Tag recoveries (predicted)
@@ -145,7 +145,8 @@ Type objective_function<Type>::operator() ()
       tF(vfa(ca), vft(ct)) = -log(invlogit(logit_exp_neg_tf(vfa(ca), vft(ct))));
     }
   }
-  Type M = -log(invlogit(logit_exp_neg_m)); // Natural mortality
+  // Natural mortality
+  Type M = -log(invlogit(logit_exp_neg_m));
 
   // Compute constants ---------------------------------------------------------
 
@@ -176,7 +177,7 @@ Type objective_function<Type>::operator() ()
   for (int mg = 0; mg < ng; mg++) {
     for (int ct = 0; ct < nt; ct++) {
       for (int ca = 0; ca < na; ca++) {
-        S(ca, ct, mg) = exp(-tF(vfa(ca),vft(ct)) * tW(vwa(ca),vwt(ct)) + M + h);
+        S(ca, ct, mg) = exp(-tF(vfa(ca),vft(ct)) * tW(vwa(ca),vwt(ct)) - M - h);
       }
     }
   }
