@@ -37,6 +37,7 @@ fit <- mmmFit(
 # Define sysdata
 sysdata <- list(
   sim = sim,
+  data = data,
   fit = fit
 )
 # Write to R/sysdata.rda
