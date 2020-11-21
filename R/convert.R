@@ -1,11 +1,15 @@
 #' Logit (Log Odds Ratio)
 #'
-#' @param x Numeric between zero and one(inclusive)
+#' @param x [numeric()] Value between zero and one (inclusive).
 #'
-#' @return The log of the odds ratio
+#' @return [numeric()] The log of the odds ratio.
 #' @export
 #'
 #' @examples
+#' logit(0)
+#' logit(0.5)
+#' logit(1)
+#' logit(matrix(c(0, 0.5, 0.5, 1), nrow = 2))
 #'
 logit <- function (x) {
   # Check arguments
@@ -16,20 +20,26 @@ logit <- function (x) {
 
 #' Inverse Logit
 #'
-#' @param y Numeric
+#' @param y [numeric()] Finite or infinite scalar.
 #'
 #' @return The inverse of the log odds ratio
 #' @export
 #'
 #' @examples
+#' invlogit(Inf)
+#' invlogit(0)
+#' invlogit(-Inf)
+#' invlogit(matrix(c(-Inf, 0, 0, Inf), nrow = 2))
 #'
 invlogit <- function (y) {
   # Check arguments
   checkmate::assert_numeric(y)
   # Compute invlogit(y)
   ans <- numeric(length = length(y))
-  ans[which(y == Inf)] <- 1
-  ans[which(y != Inf)] <- exp(y) / (1 + exp(y))
+  inf_ind <- which(y == Inf)
+  fin_ind <- which(y != Inf)
+  ans[inf_ind] <- 1
+  ans[fin_ind] <- exp(y[fin_ind]) / (1 + exp(y[fin_ind]))
   dim(ans) <- dim(y)
   # Return invlogit(y)
   return(ans)
@@ -37,13 +47,27 @@ invlogit <- function (y) {
 
 #' Create Movement Rate Array
 #'
-#' @param p Numeric array. Movement parameters. (Not transposed).
-#' @param z Integer matrix. Movement indexes. (Not transposed).
+#' @param p [array()] Movement parameters.
+#' @param z [matrix()] Movement index..
 #'
-#' @return [array()] Movement rates
+#' @return [array()] Movement rates.
 #' @export
 #'
 #' @examples
+#' # 2x2
+#' x <- array(c(0.9, 0.2, 0.1, 0.8, 0.7, 0.4, 0.3, 0.6), dim = c(2, 2, 2, 1))
+#' z <- array(c(0, 1, 1, 0), dim = c(2, 2))
+#' p <- create_movement_parameters(x, z)
+#' r <- create_movement_rates(p, z)
+#' all(x - r < 1e-12)
+#'
+#' # 3x3 with missing adjacent rates
+#' v <- c(0.9,0.1,0.3,0,0.8,0,0.1,0.1,0.7,0.6,0.2,0.6,0,0.5,0,0.4,0.3,0.4)
+#' x <- array(v, dim = c(3,3,2,1))
+#' z <- array(c(0,1,1,0,0,0,1,1,0), dim = c(3,3))
+#' p <- create_movement_parameters(x, z)
+#' r <- create_movement_rates(p, z)
+#' all(x - r < 1e-12)
 #'
 create_movement_rates <- function (p, z) {
 
@@ -96,10 +120,10 @@ create_movement_rates <- function (p, z) {
 
 #' Create Movement Parameter Array
 #'
-#' @param r Numeric Array. aK.
-#' @param z Integer matrix. Movement indexes. dim = c(pa, ca)
+#' @param r [array()] Movement rates.
+#' @param z [matrix()] Movement index.
 #'
-#' @return [array()]
+#' @return [array()] Movement parameters.
 #' @export
 #'
 #' @examples
@@ -107,16 +131,16 @@ create_movement_rates <- function (p, z) {
 #' # 2x2
 #' x <- array(c(0.9, 0.2, 0.1, 0.8, 0.7, 0.4, 0.3, 0.6), dim = c(2, 2, 2, 1))
 #' z <- array(c(0, 1, 1, 0), dim = c(2, 2))
-#' p <- create_movement_parameters(x, m)
-#' r1 <- create_movement_rates(a, m)
+#' p <- create_movement_parameters(x, z)
+#' r <- create_movement_rates(p, z)
 #' all(x - r < 1e-12)
 #'
 #' # 3x3 with missing adjacent rates
 #' v <- c(0.9,0.1,0.3,0,0.8,0,0.1,0.1,0.7,0.6,0.2,0.6,0,0.5,0,0.4,0.3,0.4)
 #' x <- array(v, dim = c(3,3,2,1))
 #' z <- array(c(0,1,1,0,0,0,1,1,0), dim = c(3,3))
-#' p <- create_movement_parameters(x, m)
-#' r <- create_movement_rates(a, m)
+#' p <- create_movement_parameters(x, z)
+#' r <- create_movement_rates(p, z)
 #' all(x - r < 1e-12)
 #'
 create_movement_parameters <- function (r,
@@ -124,6 +148,7 @@ create_movement_parameters <- function (r,
 
   # Check arguments
   checkmate::assert_array(r, d = 4, any.missing = FALSE)
+  checkmate::assert_numeric(r, lower = 0, upper = 1)
   checkmate::assert_matrix(z, mode = "integerish", any.missing = FALSE)
   # Initialize index limits
   np <- sum(z)
@@ -133,11 +158,13 @@ create_movement_parameters <- function (r,
   # Check r against z
   for (mg in seq_len(ng)) {
     for (cpt in seq_len(npt)) {
+      row_sums <- rowSums(r[,, cpt, mg])
+      if (!all(row_sums == 1)) stop("row sums of r must all equal one\n")
       for (ca in seq_len(na)) {
         for (pa in seq_len(na)) {
           if (pa != ca) {
             if (z[pa, ca] == 0) {
-              if (r[pa, ca, npt, ng] != 0) {
+              if (r[pa, ca, cpt, mg] != 0) {
                 stop("movement rates must correspond to parameter index")
               }
             }
@@ -186,8 +213,6 @@ create_movement_parameters <- function (r,
 #'
 #' @return
 #'
-#' @examples
-#'
 subset_by_name <- function (x, x_names) {
   if (is.numeric(x) & !is.matrix(x)) {
     x[which(is.element(names(x), x_names))]
@@ -200,8 +225,8 @@ subset_by_name <- function (x, x_names) {
 
 #' Matrix Power
 #'
-#' @param x [matrix()] Numeric matrix
-#' @param n [integer()] Matrix power
+#' @param x [matrix()] Square numeric matrix.
+#' @param pow [integer()] Matrix power.
 #'
 #' @return [matrix()]
 #' @export
@@ -209,17 +234,18 @@ subset_by_name <- function (x, x_names) {
 #' @examples
 #'
 #' x <- matrix(c(1,2,3,4), nrow = 2)
-#' n <- 2
-#' matrix_power(x, n)
+#' pow <- 2
+#' matrix_power(x, pow)
 #'
-matrix_power <- function (x, n) {
+matrix_power <- function (x, pow) {
   # Check arguments
   checkmate::assert_matrix(x, mode = "numeric", any.missing = FALSE)
-  checkmate::assert_integerish(n, lower = 1, len = 1, any.missing = FALSE)
+  checkmate::assert_true(nrow(x) == ncol(x))
+  checkmate::assert_integerish(pow, lower = 1, len = 1, any.missing = FALSE)
   # Compute matrix power
-  x_n <- x
-  for (i in seq_len(n - 1)) x_n <- x_n %*% x
-  return(x_n)
+  x_pow <- x
+  for (i in seq_len(pow - 1)) x_pow <- x_pow %*% x
+  return(x_pow)
 }
 
 #' Create Movement Results
@@ -237,9 +263,6 @@ matrix_power <- function (x, n) {
 #' movement result standard errors.
 #'
 #' @return A [list()]
-#' @export
-#'
-#' @examples
 #'
 create_movement_results <- function (vtp, mtp, np, npt, ng, z, pow, draws) {
 
@@ -374,9 +397,6 @@ create_movement_results <- function (vtp, mtp, np, npt, ng, z, pow, draws) {
 #' @param estimate [logical()] Estimate natural mortality?
 #'
 #' @return [list()]
-#' @export
-#'
-#' @examples
 #'
 create_mortality_results <- function (logit_exp_neg_m,
                                       logit_exp_neg_m_se,
@@ -424,9 +444,6 @@ create_mortality_results <- function (logit_exp_neg_m,
 #' @param estimate [logical()] Estimate fishing mortality rate(s)?
 #'
 #' @return [list()]
-#' @export
-#'
-#' @examples
 #'
 create_fishing_results <- function (vlogit_exp_neg_tf,
                                     mlogit_exp_neg_tf_cov,
@@ -502,9 +519,6 @@ create_fishing_results <- function (vlogit_exp_neg_tf,
 #' @param estimate [logical()] Estimate or return NULL.
 #'
 #' @return [list()]
-#' @export
-#'
-#' @examples
 #'
 create_bias_results <- function (log_b = log_b,
                                  log_b_cov = log_b_cov,
@@ -544,7 +558,6 @@ create_bias_results <- function (log_b = log_b,
   ))
 }
 
-
 #' Create Dispersion Results
 #'
 #' @param log_k [numeric()] Scalar estimate.
@@ -552,9 +565,6 @@ create_bias_results <- function (log_b = log_b,
 #' @param estimate [logical()] Estimate negative binomial dispersion?
 #'
 #' @return [list()]
-#' @export
-#'
-#' @examples
 #'
 create_dispersion_results <- function (log_k,
                                        log_k_se,
