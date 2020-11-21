@@ -1,22 +1,77 @@
 #' Simulate Tag Recovery Data
 #'
 #' @param data [list()] Input data. See details.
-#' @param parameters [list()] Optional parameters to be treated as data.
+#' @param parameters [list()] Parameters to be treated as data.
 #'   See details.
 #' @param settings [list()] Values that help define the simulation model.
 #'   See \code{mmmSet()}.
 #'
-#' @details TBD
+#' @details The [list()] argument \code{data} must contain:
+#' \itemize{
+#'   \item \code{x} An integer matrix of tag release counts formatted
+#'     as described in [mmmTags()].
+#'   \item \code{y} An integer matrix of tag recovery counts formatted
+#'     as described in [mmmTags()].
+#'   \item \code{z} A square binary index matrix that indicates allowed
+#'     direct movement between areas (from rows to columns) from one
+#'     time step to the next. Ones off the diagonal indicate allowed
+#'     direct movement. Zeros off the diagonal represent disallowed
+#'     direct movement. Numbers on the diagonal are ignored because
+#'     self-movement is always allowed. See [mmmIndex()].
+#'   \item \code{h} The (positive) scalar instantaneous tag loss rate.
+#'   \item \code{u} The scalar proportion of tags lost during release.
+#' }
+#' The list argument \code{data} may optionally contain:
+#' \itemize{
+#'   \item \code{l} A matrix of tag reporting rates (proportions).
+#'     Defaults to one if omitted (full reporting). See [mmmRates()].
+#'   \item \code{w} A matrix of fishing mortality rate weights. Useful
+#'     when the tag time step is finer than the fishing rate step.
+#'     Defaults to one (equal fishing rates across tag time steps
+#'     within a fishing rate time step). See [mmmWeights()].
+#'   \item \code{f} A matrix of fishing mortality rates. Must be included
+#'     in \code{data} or \code{parameters}. See [mmmRates()].
+#'   \item \code{m} The scalar instantaneous natural mortality rate.
+#'     Must be included in \code{data} or \code{parameters}.
+#' }
+#' The [list()] argument \code{parameters} must contain:
+#' \itemize{
+#'   \item \code{p} An array of movement parameters. See
+#'     [create_movement_parameters()].
+#' }
+#' The list argument \code{parameters} may optionally contain:
+#' \itemize{
+#'   \item \code{f} A matrix of fishing mortality rates. Must be included
+#'     in \code{data} or \code{parameters}. See [mmmRates()].
+#'   \item \code{m} The scalar instantaneous natural mortality rate.
+#'     Must be included in \code{data} or \code{parameters}.
+#' }
 #'
 #' @return An object of class \code{mmmSim}.
 #' @export
 #'
 #' @examples
+#' # Data
 #' sim_x <- create_release_matrix()
+#' sim_z <- mmmIndex(3, pattern = 1)
 #' sim_f <- as.matrix(0.04)
 #' sim_m <- 0.1
-#' d <- list(x = sim_x, z = sim_z, r = sim_r, f = sim_f, m = sim_m)
-#' s1 <- mmmSim(d)
+#' sim_h <- 0.02
+#' sim_u <- 0.1
+#' # Parameters
+#' v <- c(0.9, 0.1, 0.0, 0.1, 0.8, 0.3, 0.0, 0.1, 0.7)
+#' sim_r <- array(v, dim = c(3,3,1,1))
+#' sim_p <-create_movement_parameters(sim_r, sim_z)
+#' # Simulation
+#' data <- list(
+#'   x = sim_x,
+#'   z = sim_z,
+#'   f = sim_f,
+#'   m = sim_m,
+#'   h = sim_h,
+#'   u = sim_u)
+#' parameters <- list(p = sim_p)
+#' s1 <- mmmSim(data, parameters)
 #'
 mmmSim <- function(data,
                    parameters = NULL,
@@ -26,106 +81,49 @@ mmmSim <- function(data,
 
   tictoc::tic("mmmSim")
 
-  # Check data arguments -------------------------------------------------------
+  # Insert dummy element -------------------------------------------------------
 
-  cat("checking data arguments \n")
-  checkmate::assert_list(data, null.ok = FALSE)
-  checkmate::assert_matrix(data$x, mode = "integerish", null.ok = FALSE)
-  checkmate::assert_matrix(data$z, mode = "integerish", null.ok = TRUE)
-  checkmate::assert_matrix(data$l, mode = "double", null.ok = TRUE)
-  checkmate::assert_matrix(data$w, mode = "double", null.ok = TRUE)
-  checkmate::assert_numeric(data$x, lower = 0, null.ok = FALSE)
-  checkmate::assert_numeric(data$z, lower = 0, upper = 1, null.ok = TRUE)
-  checkmate::assert_numeric(data$l, lower = 0, upper = 1, null.ok = TRUE)
-  checkmate::assert_numeric(data$w, lower = 0, upper = 0, null.ok = TRUE)
-  # Optionally parameters
-  checkmate::assert_matrix(data$f, mode = "double", null.ok = TRUE)
-  checkmate::assert_numeric(data$f, lower = 0, null.ok = TRUE)
-  checkmate::assert_double(data$m, lower = 0, len = 1, null.ok = TRUE)
-  checkmate::assert_double(data$h, lower = 0, len = 1, null.ok = TRUE)
-  checkmate::assert_double(data$u, lower = 0, len = 1, null.ok = TRUE)
-  checkmate::assert_double(data$u, upper = 1, null.ok = TRUE)
-  # Also optionally parameters
-  checkmate::assert_array(data$p, mode = "double", null.ok = TRUE)
-  checkmate::assert_array(data$r, mode = "double", null.ok = TRUE)
-  checkmate::assert_numeric(data$b, lower = 0, null.ok = TRUE)
+  data$y <- matrix(0, nrow = 1, ncol = 6)
+  rel_cols <- c("release_step", "release_area", "group")
+  rec_cols <- c("recover_step", "recover_area", "count")
+  colnames(data$y) <- c(rel_cols, rec_cols)
 
-  # Check parameters argument --------------------------------------------------
+  # Check arguments ------------------------------------------------------------
 
-  cat("checking parameter arguments \n")
-  checkmate::assert_list(parameters, null.ok = TRUE)
-  # Optionally data
-  checkmate::assert_array(parameters$p, mode = "double", null.ok = TRUE)
-  checkmate::assert_array(parameters$r, mode = "double", null.ok = TRUE)
-  checkmate::assert_matrix(parameters$f, mode = "double", null.ok = TRUE)
-  checkmate::assert_numeric(parameters$f, lower = 0, null.ok = TRUE)
-  checkmate::assert_double(parameters$m, lower = 0, len = 1, null.ok = TRUE)
-  checkmate::assert_double(parameters$h, lower = 0, len = 1, null.ok = TRUE)
-  checkmate::assert_double(parameters$u, lower = 0, len = 1, null.ok = TRUE)
-  checkmate::assert_double(parameters$u, upper = 1, null.ok = TRUE)
-  checkmate::assert_numeric(parameters$b, lower = 0, null.ok = TRUE)
+  check_data(data)
+  check_parameters(parameters)
+  check_settings(settings)
 
-  # Check settings argument ----------------------------------------------------
+  # Assign data ----------------------------------------------------------------
 
-  cat("checking settings arguments \n")
-  # Check settings
-  checkmate::assert_list(settings, null.ok = FALSE)
-  # Check error family setting
-  checkmate::assert_integerish(settings$error_family, len = 1)
-  checkmate::assert_integerish(settings$error_family, lower = 0, upper = 1)
-  checkmate::assert_integerish(settings$error_family, any.missing = FALSE)
-  # Check min liberty setting
-  checkmate::assert_integerish(settings$min_liberty, len = 1)
-  checkmate::assert_integerish(settings$min_liberty, any.missing = FALSE)
-  checkmate::assert_integerish(settings$min_liberty, lower = 0)
-  # Check max liberty setting
-  checkmate::assert_integerish(settings$max_liberty, len = 1)
-  checkmate::assert_integerish(settings$max_liberty, any.missing = FALSE)
-  checkmate::assert_integerish(settings$max_liberty, lower = 0)
-  checkmate::assert_true(settings$min_liberty < settings$max_liberty)
-  # Check time varying setting
-  checkmate::assert_integerish(settings$time_varying, len = 1)
-  checkmate::assert_integerish(settings$time_varying, lower = 0, upper = 1)
-  checkmate::assert_integerish(settings$time_varying, any.missing = FALSE)
-  # Check time process setting
-  checkmate::assert_integerish(settings$time_process, len = 1)
-  checkmate::assert_integerish(settings$time_process, lower = 0, upper = 1)
-  checkmate::assert_integerish(settings$time_process, any.missing = FALSE)
-  # Check cycle length setting
-  checkmate::assert_integerish(settings$cycle_length, len = 1)
-  checkmate::assert_integerish(settings$cycle_length, lower = 0)
-  checkmate::assert_integerish(settings$cycle_length, any.missing = FALSE)
-  # Check block length setting
-  checkmate::assert_integerish(settings$block_length, len = 1)
-  checkmate::assert_integerish(settings$block_length, lower = 0)
-  checkmate::assert_integerish(settings$block_length, any.missing = FALSE)
-  # Check fish rate by setting
-  checkmate::assert_integerish(settings$fish_rate_by, len = 1)
-  checkmate::assert_integerish(settings$fish_rate_by, lower = 0, upper = 3)
-  checkmate::assert_integerish(settings$fish_rate_by, any.missing = FALSE)
+  x <- data$x # Tag releases
+  y <- data$y # Tag recoveries
+  z <- data$z # Movement index
+  h <- data$h # Instantaneous tag loss rate
+  u <- data$u # Initial tag loss proportion
 
-  # Assembly values ------------------------------------------------------------
+  # Assign optional data -------------------------------------------------------
 
-  x <- data$x
+  if (!is.null(data$l)) l <- data$l else l <- matrix(1, nrow = 1L, ncol = 1L)
+  if (!is.null(data$w)) w <- data$w else w <- matrix(1, nrow = 1L, ncol = 1L)
 
-  # Check required data --------------------------------------------------------
+  # Assign data / parameters ---------------------------------------------------
 
-  # Tag releases
-  checkmate::assert_matrix(x, mode = "integerish", any.missing = FALSE)
-  checkmate::assert_matrix(x, ncols = 4, null.ok = FALSE)
-  checkmate::assert_numeric(x, lower = 0, null.ok = FALSE)
-  checkmate::assert_true(colnames(x)[1] == "release_step")
-  checkmate::assert_true(colnames(x)[2] == "release_area")
-  checkmate::assert_true(colnames(x)[3] == "group")
-  checkmate::assert_true(colnames(x)[4] == "count")
-  # Check values
-  if (min(x[, "release_step"]) > 0) cat("caution: time step not indexed from zero")
+  if (!is.null(data$f)) f <- data$f else f <- parameters$f # May still be NULL
+  if (!is.null(data$m)) m <- data$m else m <- parameters$m # May still be NULL
+
+  # Assign parameters ----------------------------------------------------------
+
+  if (!is.null(parameters$p)) p <- parameters$p else p <- NULL # Movement
+  if (!is.null(parameters$b)) b <- parameters$b else b <- NULL # Fishing bias
+  if (!is.null(parameters$k)) k <- parameters$k else k <- NULL # NB Dispersion
 
   # Set index limits -----------------------------------------------------------
 
   nt <- max(x[, "release_step"]) + 1L # Index from zero for C++
   na <- max(x[, "release_area"]) + 1L # Index from zero for C++
   ng <- max(x[, "group"]) + 1L # Index from zero for C++
+  np <- as.integer(sum(z))
 
   # Assign settings ------------------------------------------------------------
 
@@ -141,28 +139,35 @@ mmmSim <- function(data,
   newton_iters <- settings$newton_iters
   openmp_cores <- settings$openmp_cores
 
-  # Define index matrix --------------------------------------------------------
+  # Create tag reporting rate indexes ------------------------------------------
 
-  z <- data$z
-  diag(z) <- 0
+  nlt <- nrow(l)
+  nla <- ncol(l)
+  vlt <- rep(c(seq_len(nlt)), ceiling(nt / nlt))[seq_len(nt)]
+  vla <- rep(c(seq_len(nla)), ceiling(na / nla))[seq_len(na)]
 
-  # Check index matrix ---------------------------------------------------------
+  # Create fishing rate weighting indexes --------------------------------------
 
-  checkmate::assert_matrix(z, mode = "integerish", null.ok = FALSE)
-  checkmate::assert_matrix(z, any.missing = FALSE, null.ok = FALSE)
-  checkmate::assert_numeric(z, lower = 0, upper = 1, null.ok = FALSE)
-  checkmate::assert_true(nrow(z) == ncol(z))
+  nwt <- nrow(w)
+  nwa <- ncol(w)
+  vwt <- rep(c(seq_len(nwt)), ceiling(nt / nwt))[seq_len(nt)]
+  vwa <- rep(c(seq_len(nwa)), ceiling(na / nwa))[seq_len(na)]
 
-  # Set index limit ------------------------------------------------------------
+  # Create fishing rate indexes ------------------------------------------------
 
-  np <- as.integer(sum(z))
+  if (!is.null(f)) nft <- nrow(f) else nft <- 1L
+  if (!is.null(f)) nfa <- ncol(f) else nfa <- 1L
+  vft <- rep(seq_len(nft), each = ceiling(nt / nft))[seq_len(nt)]
+  vfa <- rep(seq_len(nfa), each = ceiling(na / nfa))[seq_len(na)]
+  if (nt %% nft) cat("caution: nft does not divide nt evenly\n")
+  if (!is.element(nfa, c(1, na))) stop("nfa must equal 1 or na\n")
 
-  # Set parameter index values -------------------------------------------------
+  # Create movement parameter indexes ------------------------------------------
 
   if (time_varying) {
     if (!block_length && !cycle_length) {
       npt <- nt
-      vpt <- c(seq_len(nt)) # Index from one for R
+      vpt <- c(seq_len(nt)) # Index from zero for TMB
     } else if (block_length && !cycle_length) {
       npt <- ceiling(nt / block_length)
       vpt <- rep(seq_len(npt), each = block_length)[seq_len(nt)]
@@ -176,187 +181,19 @@ mmmSim <- function(data,
     }
   } else {
     npt <- 1L
-    vpt <- rep(1L, nt) # Index from one for R
+    vpt <- rep(1L, nt) # Index from zero for TMB
   }
 
-  # Create fishing rate indexes ------------------------------------------------
+  # Confirm arguments ----------------------------------------------------------
 
-  if (!is.null(data$f)) {
-    nft <- nrow(data$f)
-    nfa <- ncol(data$f)
-    vft <- rep(seq_len(nft), each = ceiling(nt / nft))[seq_len(nt)]
-    vfa <- rep(seq_len(nfa), each = ceiling(na / nfa))[seq_len(na)]
-    if (nt %% nft) {
-      cat("warning: nft does not divide nt evenly \n")
-    }
-    if (!is.element(nfa, c(1, na))) {
-      cat("warning: nfa must equal 1 or na \n")
-    }
-    cat("using f from data and ignoring fish_rate_by in settings \n")
-  } else if (!is.null(parameters$f)) {
-    nft <- nrow(parameters$f)
-    nfa <- ncol(parameters$f)
-    vft <- rep(seq_len(nft), each = ceiling(nt / nft))[seq_len(nt)]
-    vfa <- rep(seq_len(nfa), each = ceiling(na / nfa))[seq_len(na)]
-    if (nt %% nft) {
-      cat("warning: nft does not divide nt evenly \n")
-    }
-    if (!is.element(nfa, c(1, na))) {
-      cat("warning: nfa must equal 1 or na \n")
-    }
-    cat("initial f from parameters; ignoring fish_rate_by in settings \n")
-  } else {
-    stop("missing fishing rate matrix f")
-  }
+  if (is.null(p)) stop("data or parameters must contain p\n")
+  if (is.null(f)) stop("data or parameters must contain f\n")
+  if (is.null(m)) stop("data or parameters must contain m\n")
+  if (is.null(b)) b <- rep(1, ng)
 
-  # Unpack arguments -----------------------------------------------------------
+  # Create rates ---------------------------------------------------------------
 
-  # Tag reporting rate
-  if (!is.null(data$l)) {
-    l <- data$l
-  } else {
-    l <- matrix(1, nrow = 1L, ncol = 1L)
-  }
-  # Fishing rate weighting
-  if (!is.null(data$w)) {
-    w <- data$w
-  } else {
-    w <- matrix(1, nrow = 1L, ncol = 1L)
-  }
-
-  # Check arguments ------------------------------------------------------------
-
-  # Tag reporting rate
-  checkmate::assert_matrix(l, mode = "double", null.ok = FALSE)
-  checkmate::assert_matrix(l, any.missing = FALSE, null.ok = FALSE)
-  checkmate::assert_numeric(l, lower = 0, null.ok = FALSE)
-  checkmate::assert_true(ncol(l) == 1 || ncol(l) == na)
-  # Fishing rate weighting
-  checkmate::assert_matrix(w, mode = "double", null.ok = FALSE)
-  checkmate::assert_matrix(w, any.missing = FALSE, null.ok = FALSE)
-  checkmate::assert_numeric(w, lower = 0, null.ok = FALSE)
-  checkmate::assert_true(ncol(w) == 1 || ncol(w) == na)
-  checkmate::assert_true(all(colSums(w) == 1))
-
-  # Create tag reporting rate indexes ------------------------------------------
-
-  # Set for time step
-  if (nrow(l) == 1L) {
-    nlt <- 1L
-    vlt <- rep(1L, nt) # Index from one for R
-  } else {
-    nlt <- nt
-    vlt <- c(seq_len(nt))
-  }
-  # Set for areas
-  if (ncol(l) == 1L) {
-    nla <- 1L
-    vla <- rep(1L, na)
-  } else {
-    nla <- na
-    vla <- c(seq_len(na))
-  }
-
-  # Create fishing rate weighting indexes --------------------------------------
-
-  # Set for time step
-  if (nrow(w) == 1L) {
-    nwt <- 1L
-    vwt <- rep(1L, nt) # Index from one for R
-  } else {
-    nwt <- nrow(w)
-    vwt <- rep(c(seq_len(nwt)), ceiling(nt / nwt))[seq_len(nt)]
-  }
-  # Set for areas
-  if (ncol(w) == 1L) {
-    nwa <- 1L
-    vwa <- rep(1L, na)
-  } else {
-    nwa <- na
-    vwa <- c(seq_len(na))
-  }
-
-  # Unpack arguments -----------------------------------------------------------
-
-  # Array movement parameters
-  if (!is.null(data$r)) {
-    r <- data$r
-    p <- create_movement_parameters(r, z = z)
-  } else if (!is.null(data$p)) {
-    p <- data$p
-    r <- create_movement_rates(p, z = z)
-  } else if (!is.null(parameters$r)) {
-    r <- parameters$r
-    p <- create_movement_parameters(r, z = z)
-  } else if (!is.null(parameters$p)) {
-    p <- parameters$p
-    r <- create_movement_rates(parameters$p, z = z)
-  } else {
-    stop("data or parameter must contain array r or array p")
-  }
-  # Matrix fishing mortality rate
-  if (!is.null(data$f)) {
-    f <- data$f
-  } else if (!is.null(parameters$f)) {
-    f <- parameters$f
-  } else {
-    stop("data or parameter must contain matrix f")
-  }
-  # Scalar natural mortality
-  if (!is.null(data$m)) {
-    m <- data$m
-  } else if (!is.null(parameters$m)) {
-    m <- parameters$m
-  } else {
-    stop("data or parameter must contain scalar m")
-  }
-  # Scalar tag loss rate
-  if (!is.null(data$h)) {
-    h <- data$h
-  } else if (!is.null(parameters$h)) {
-    h <- parameters$h
-  } else {
-    h <- 0L
-  }
-  # Scalar initial tag loss rate (proportion)
-  if (!is.null(data$u)) {
-    u <- data$u
-  } else if (!is.null(parameters$u)) {
-    u <- parameters$u
-  } else {
-    u <- 0
-  }
-  # Vector fishing bias
-  if (!is.null(data$b)) {
-    b <- data$b
-  } else if (!is.null(parameters$b)) {
-    b <- parameters$b
-  } else {
-    b <- rep(1, ng)
-  }
-  # Scalar negative binomial dispersion
-  if (!is.null(data$k)) {
-    k <- data$k
-  } else if (!is.null(parameters$k)) {
-    k <- parameters$k
-  } else {
-    k <- 1L
-  }
-
-  # Check arguments ------------------------------------------------------------
-
-  # Movement rate array
-  checkmate::assert_array(r, mode = "double", any.missing = FALSE, d = 4)
-  checkmate::assert_numeric(r, lower = 0, upper = 1, len = na * na * npt * ng)
-  checkmate::assert_true(dim(r)[1] == na, na.ok = FALSE)
-  checkmate::assert_true(dim(r)[2] == na, na.ok = FALSE)
-  checkmate::assert_true(dim(r)[3] == npt, na.ok = FALSE)
-  checkmate::assert_true(dim(r)[4] == ng, na.ok = FALSE)
-  # Fishing rate matrix
-  checkmate::assert_matrix(f, mode = "double", any.missing = FALSE)
-  checkmate::assert_numeric(f, lower = 0, null.ok = FALSE)
-  checkmate::assert_true(dim(f)[1] == nft, na.ok = FALSE)
-  checkmate::assert_true(dim(f)[2] == nfa, na.ok = FALSE)
+  r <- create_movement_rates(p, z)
 
   # Compute transposes ---------------------------------------------------------
 
@@ -390,8 +227,8 @@ mmmSim <- function(data,
   for (mg in seq_len(ng)) {
     for (ct in seq_len(nt)) {
       for (ca in seq_len(na)) {
-        S[ca, ct, mg] <- exp(-(b[mg] * tf[vfa[ca], vft[ct]] *
-                                  tw[vwa[ca], vwt[ct]] + m + h))
+        S[ca, ct, mg] <-
+          exp(-b[mg] * tf[vfa[ca], vft[ct]] * tw[vwa[ca], vwt[ct]] - m - h)
       }
     }
   }
@@ -477,9 +314,9 @@ mmmSim <- function(data,
     f = f,
     m = m,
     h = h,
-    u = u,
-    b = b,
-    k = k
+    u = u
+    # b = b,
+    # k = k
   )
   # Settings
   settings_list <- settings
