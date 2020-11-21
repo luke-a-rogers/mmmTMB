@@ -428,6 +428,7 @@ mmmFit <- function (data,
     p = movement_list$p_fit,
     f = fishing_rate_list$f_fit,
     m = mortality_list$m_fit,
+    b = fishing_bias_list$b_fit,
     k = dispersion_list$k_fit
   )
 
