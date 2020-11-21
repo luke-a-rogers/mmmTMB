@@ -1,6 +1,6 @@
 Package: mmmTMB
-Title: Fit Markov movement models with 'TMB'
-Version: 0.1.2
+Title: Fit Markovian Movement Models (MMM) via Template Model Builder
+Version: 0.2.0
 Authors@R: 
     c(person(given = c("Luke", "A."),
              family = "Rogers",
@@ -8,8 +8,8 @@ Authors@R:
              email = "luke.rogers@dfo-mpo.gc.ca",
              comment = c(ORCID = "0000-0003-3843-064X"))
     )
-Description: The 'mmmTMB' package fits Markov movement models.
-License: GPL (>=3)
+Description: The 'mmmTMB' package fits Markovian movement models via Template Model Builder.
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
@@ -18,9 +18,14 @@ Imports:
     Rcpp,
     RcppEigen,
     TMB,
-    tictoc,
     MASS,
-    ggplot2
+    tictoc,
+    ggplot2,
+    parallel,
+    checkmate,
+    dplyr,
+    lubridate,
+    tidyr
 LinkingTo: 
     Rcpp,
     RcppEigen,

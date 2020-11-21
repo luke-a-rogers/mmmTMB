@@ -17,6 +17,3 @@ subset_by_name(x, x_names)
 \description{
 Subset Numeric Vector or Matrix by Rowname, Colname, or Name
 }
-\examples{
-
-}

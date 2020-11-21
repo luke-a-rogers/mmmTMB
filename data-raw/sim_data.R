@@ -20,25 +20,15 @@ parameters <- list(p = sim_p)
 sim <- mmmSim(data, parameters)
 # Augment data
 data$y <- sim$simulation$y
-# define settings
-settings <- mmmSet(
-  error_family = 0,
-  nlminb_loops = 5,
-  newton_iters = 5,
-  openmp_cores = 6
+# Simulation data
+sim_data <- list(
+  x = data$x,
+  y = data$y,
+  z = data$z,
+  f = data$f,
+  m = data$m,
+  h = data$h,
+  u = data$u
 )
-# Fit
-fit <- mmmFit(
-  data = data,
-  parameters = NULL,
-  settings = settings,
-  control = mmmControl()
-)
-# Define sysdata
-sysdata <- list(
-  sim = sim,
-  data = data,
-  fit = fit
-)
-# Write to R/sysdata.rda
-# usethis::use_data(sysdata, internal = TRUE, overwrite = TRUE)
+# Write to data/sim_data.rda
+# usethis::use_data(sim_data, overwrite = TRUE)

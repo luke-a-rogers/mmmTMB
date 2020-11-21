@@ -7,15 +7,13 @@
 get_convergence_diagnostics(sd_report)
 }
 \arguments{
-\item{sd_report}{A TMB::sdreport() object}
+\item{sd_report}{\code{\link[=sdreport]{sdreport()}} See \code{\link[TMB:sdreport]{TMB::sdreport()}}.}
 }
 \value{
-A list
+\code{\link[=list]{list()}}
 }
 \description{
-Get convergence diagnostics from a TMB model fit. This function is from the
-'sdmTMB' package at github.com/pbs-assess/sdmTMB/blob/master/R/fit.R
-}
-\examples{
-
+Get convergence diagnostics from a TMB model fit.
+This function is from the sdmTMB' package at
+github.com/pbs-assess/sdmTMB/blob/master/R/fit.R
 }
