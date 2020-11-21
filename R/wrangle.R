@@ -1,7 +1,7 @@
 #' Prepare Tag Data
 #'
 #' @description Prepare tag release and recovery data prior to fitting
-#' a Markovian movement model via \code{mmmFit()}.
+#' a Markov movement model via \code{mmmFit()}.
 #'
 #' @param x [data.frame()] Tag release data. See details.
 #' @param y [data.frame()] Tag recovery data. See details.
@@ -19,18 +19,18 @@
 #' certain columns that have the same column name in both data frames.
 #' Both \code{x} & \code{y} must include:
 #' \itemize{
-#'   \item A [character()] column giving unique individual tag IDs.
-#'   \item A [Date()] column giving individual tag release dates.
-#'   \item An [integer()] column giving release areas indexed from one.
+#'   \item [character()] column giving unique individual tag IDs.
+#'   \item [Date()] column giving individual tag release dates.
+#'   \item [integer()] column giving release areas indexed from one.
 #' }
 #' In addition, \code{y} must include:
 #' \itemize{
-#'   \item A [Date()] column giving individual tag recovery dates.
-#'   \item An [integer()] column giving recovery areas indexed from one.
+#'   \item [Date()] column giving individual tag recovery dates.
+#'   \item [integer()] column giving recovery areas indexed from one.
 #' }
 #' Optionally, both \code{x} & \code{y} can include:
 #' \itemize{
-#'   \item An [atomic()] column giving values grouped by \code{groups}.
+#'   \item [atomic()] column giving values grouped by \code{groups}.
 #' }
 #' Note that [character()] columns in `"%Y-%M-%D"` format may be substituted
 #' for [Date()] columns.
@@ -193,15 +193,16 @@ mmmTags <- function (x,
   # Data frame x
   checkmate::assert_date(x$release_date, any.missing = FALSE)
   checkmate::assert_integerish(x$release_area, lower = 1, any.missing = FALSE)
-  checkmate::assert_integerish(x$group_raw, lower = 1, any.missing = FALSE)
-  checkmate::assert_character(x$id, any.missing = FALSE)
+  # checkmate::assert_integerish(x$group_raw, lower = 1, any.missing = FALSE)
+  # checkmate::assert_character(x$id, any.missing = FALSE)
+
   # Data frame y
   checkmate::assert_date(y$release_date, any.missing = FALSE)
   checkmate::assert_date(y$recover_date, any.missing = FALSE)
   checkmate::assert_integerish(y$release_area, lower = 1, any.missing = FALSE)
   checkmate::assert_integerish(y$recover_area, lower = 1, any.missing = FALSE)
-  checkmate::assert_integerish(y$group_raw, lower = 1, any.missing = FALSE)
-  checkmate::assert_character(y$id, any.missing = FALSE)
+  # checkmate::assert_integerish(y$group_raw, lower = 1, any.missing = FALSE)
+  # checkmate::assert_character(y$id, any.missing = FALSE)
 
   # Convert limits to dates ----------------------------------------------------
 
@@ -388,7 +389,7 @@ mmmTags <- function (x,
 #' Prepare Rate Data
 #'
 #' @description Prepare fishing mortality or tag reporting rate data prior
-#' to fitting a Markovian movement model via \code{mmmFit()}.
+#' to fitting a Markov movement model via \code{mmmFit()}.
 #'
 #' @param x [data.frame()] Dates, areas, and rates data. See details.
 #' @param cols [list()] Named list of character strings. See details.
@@ -403,9 +404,9 @@ mmmTags <- function (x,
 #' The \code{x} argument must be data frames that contains:
 #'
 #' \itemize{
-#'   \item An [integer()] column giving the date (integers for now).
-#'   \item An [atomic()] column giving the areas (see \code{areas} argument).
-#'   \item A [numeric()] column giving the rate for the given area and date.
+#'   \item [integer()] column giving the date (integers for now).
+#'   \item [atomic()] column giving the areas (see \code{areas} argument).
+#'   \item [numeric()] column giving the rate for the given area and date.
 #' }
 #'
 #' The \code{cols} argument is a [list()] of named elements. The elements
@@ -422,6 +423,8 @@ mmmTags <- function (x,
 #' The elements must be in the same order in which the areas are to be
 #' indexed. The \code{areas} argument is optional if areas are already
 #' indexed sequentially from one in \code{x}.
+#'
+#' @importFrom magrittr `%>%`
 #'
 #' @return A matrix of class \code{mmmRates}.
 #' @export
@@ -536,11 +539,13 @@ mmmRates <- function (x,
 #' release and recovery time step. The weighting is based on tag recoveries
 #' at the tag time step. Weights average to one for a given area.
 #'
-#' @param tags [mmmTMB()] See \code{mmmTags()}.
+#' @param tags [mmmTMB()] See [mmmTags()].
 #' @param step [character()] Currently implemented for \code{"month"} only.
 #' Must equal the \code{step} element in \code{tags}.
 #'
 #' @return A matrix of monthly weighting for fishing mortality rates.
+#'
+#' @importFrom magrittr `%>%`
 #'
 #' @export
 #'
@@ -678,10 +683,10 @@ mmmIndex <- function (n, pattern = NULL, allow = NULL, disallow = NULL) {
 
 #' Map Values to Groups
 #'
-#' @param x A vector
-#' @param groups A list of named group vectors
+#' @param x [atomic()] Vector of values.
+#' @param groups [list()] Named vectors of group elements.
 #'
-#' @return An integer vector
+#' @return [integer()] Vector.
 #'
 #' @export
 #'
