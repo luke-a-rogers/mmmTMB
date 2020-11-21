@@ -105,8 +105,9 @@ Type objective_function<Type>::operator() ()
   // Parameters ----------------------------------------------------------------
 
   PARAMETER_ARRAY(tp); // Movement parameters dim = c(np, npt, ng)
-  PARAMETER_ARRAY(logit_exp_neg_tf); // Fishing mortality
+  PARAMETER_ARRAY(logit_exp_neg_tf); // Fishing mortality rate
   PARAMETER(logit_exp_neg_m); // Natural mortality
+  PARAMETER_VECTOR(log_b); // Fishing mortality bias
   PARAMETER(log_k); // Negative binomial dispersion
 
   // Initialize the nll --------------------------------------------------------
@@ -126,6 +127,7 @@ Type objective_function<Type>::operator() ()
   matrix<Type> tF(nfa, nft); // Fishing mortality rates
   matrix<Type> tL(nla, nlt); // Fishing mortality rates
   matrix<Type> tW(nwa, nwt); // Fishing mortality rates
+  vector<Type> b(ng); // Fishing mortality bias
 
   // Initialize arrays ---------------------------------------------------------
 
@@ -139,12 +141,14 @@ Type objective_function<Type>::operator() ()
 
   // Inverse transform parameters ----------------------------------------------
 
-  // Fishing mortality
+  // Fishing mortality rates
   for (int ct = 0; ct < nt; ct++) {
     for (int ca = 0; ca < na; ca++) {
       tF(vfa(ca), vft(ct)) = -log(invlogit(logit_exp_neg_tf(vfa(ca), vft(ct))));
     }
   }
+  // Fishing mortality bias
+  b = exp(log_b);
   // Natural mortality
   Type M = -log(invlogit(logit_exp_neg_m));
 
@@ -177,7 +181,8 @@ Type objective_function<Type>::operator() ()
   for (int mg = 0; mg < ng; mg++) {
     for (int ct = 0; ct < nt; ct++) {
       for (int ca = 0; ca < na; ca++) {
-        S(ca, ct, mg) = exp(-tF(vfa(ca),vft(ct)) * tW(vwa(ca),vwt(ct)) - M - h);
+        S(ca, ct, mg) =
+          exp(-b(mg) * tF(vfa(ca), vft(ct)) * tW(vwa(ca), vwt(ct)) - M - h);
       }
     }
   }
@@ -209,7 +214,7 @@ Type objective_function<Type>::operator() ()
             for (int ra = 0; ra < na; ra++) {
               // Populate the predicted recovery array
               Yhat(ra, rt, mg, ma, mt) = N(ra, rt, mg, ma, mt) *
-                (Type(1) - exp(-tF(vfa(ra), vft(rt)) *
+                (Type(1) - exp(-b(mg) * tF(vfa(ra), vft(rt)) *
                 tW(vwa(ra), vwt(rt)))) *
                 tL(vla(ra), vlt(rt));
               // Shelter error distribution from mean zero
