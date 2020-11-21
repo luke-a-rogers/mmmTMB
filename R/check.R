@@ -2,174 +2,215 @@
 #'
 #' @param data [list()]
 #'
-#' @return
-#'
-#' @examples
+#' @return NULL
 #'
 check_data <- function (data = NULL) {
 
-  # Check list and elements ----------------------------------------------------
+  # Check data -----------------------------------------------------------------
 
   checkmate::assert_list(data)
-  checkmate::assert_matrix(data$x, mode = "integerish")
-  checkmate::assert_matrix(data$y, mode = "integerish")
-  checkmate::assert_matrix(data$z, mode = "integerish")
-  checkmate::assert_matrix(data$l, mode = "double", null.ok = TRUE)
-  checkmate::assert_matrix(data$w, mode = "double", null.ok = TRUE)
-  checkmate::assert_numeric(data$x, lower = 0)
-  checkmate::assert_numeric(data$y, lower = 0)
+
+  # Check x --------------------------------------------------------------------
+
+  checkmate::assert_matrix(data$x, mode = "integerish", any.missing = FALSE)
+  checkmate::assert_matrix(data$x, ncols = 4)
+  checkmate::assert_numeric(data$x, lower = 0, finite = TRUE)
+  checkmate::assert_choice(colnames(data$x)[1], c("release_step"))
+  checkmate::assert_choice(colnames(data$x)[2], c("release_area"))
+  checkmate::assert_choice(colnames(data$x)[3], c("group"))
+  checkmate::assert_choice(colnames(data$x)[4], c("count"))
+
+  # Check y --------------------------------------------------------------------
+
+  checkmate::assert_matrix(data$y, mode = "integerish", any.missing = FALSE)
+  checkmate::assert_matrix(data$y, ncols = 6)
+  checkmate::assert_numeric(data$y, lower = 0, finite = TRUE)
+  checkmate::assert_choice(colnames(data$y)[1], c("release_step"))
+  checkmate::assert_choice(colnames(data$y)[2], c("release_area"))
+  checkmate::assert_choice(colnames(data$y)[3], c("group"))
+  checkmate::assert_choice(colnames(data$y)[4], c("recover_step"))
+  checkmate::assert_choice(colnames(data$y)[5], c("recover_area"))
+  checkmate::assert_choice(colnames(data$y)[6], c("count"))
+
+  # Check z --------------------------------------------------------------------
+
+  checkmate::assert_matrix(data$z, mode = "integerish", any.missing = FALSE)
   checkmate::assert_numeric(data$z, lower = 0, upper = 1)
+
+  # Check l --------------------------------------------------------------------
+
+  checkmate::assert_matrix(data$l, mode = "double", null.ok = TRUE)
+  checkmate::assert_matrix(data$l, any.missing = FALSE, null.ok = TRUE)
   checkmate::assert_numeric(data$l, lower = 0, upper = 1, null.ok = TRUE)
+
+  # Check w --------------------------------------------------------------------
+
+  checkmate::assert_matrix(data$w, mode = "double", null.ok = TRUE)
+  checkmate::assert_matrix(data$w, any.missing = FALSE, null.ok = TRUE)
   checkmate::assert_numeric(data$w, lower = 0, upper = 12, null.ok = TRUE)
-  checkmate::assert_numeric(data$h, lower = 0, len = 1)
-  checkmate::assert_numeric(data$u, lower = 0, upper = 1, len = 1)
-  # Optionally parameters
+
+  # Check f --------------------------------------------------------------------
+
   checkmate::assert_matrix(data$f, mode = "double", null.ok = TRUE)
-  checkmate::assert_numeric(data$f, lower = 0, null.ok = TRUE)
+  checkmate::assert_numeric(data$f, lower = 0, finite = TRUE, null.ok = TRUE)
+
+  # Check m --------------------------------------------------------------------
+
   checkmate::assert_numeric(data$m, lower = 0, len = 1, null.ok = TRUE)
+  checkmate::assert_numeric(data$m,  finite = TRUE, null.ok = TRUE)
 
-  # Check f xor m null ---------------------------------------------------------
+  # Check h --------------------------------------------------------------------
 
-  if (is.null(data$f) && is.null(data$m)) {
-    stop("matrix f or scalar m must be defined in data")
+  checkmate::assert_numeric(data$h, lower = 0, len = 1, finite = TRUE)
+
+  # Check u --------------------------------------------------------------------
+
+  checkmate::assert_numeric(data$u, lower = 0, upper = 1, len = 1)
+
+  # Define index limits --------------------------------------------------------
+
+  nt <- max(c(x[, "release_step"], y[, "recover_step"])) + 1L # From zero
+  na <- max(c(x[, "release_area"], y[, "recover_area"])) + 1L # From zero
+  ng <- max(c(x[, "group"], y[, "group"])) + 1L # Indexed from zero for TMB
+  np <- as.integer(sum(z))
+
+  # Check dimensions -----------------------------------------------------------
+
+  # z
+  checkmate::assert_true(nrow(data$z) == na)
+  checkmate::assert_true(ncol(data$z) == na)
+  # l
+  if (!is.null(data$l)) {
+    checkmate::assert_true(nrow(data$l) > 0)
+    checkmate::assert_true(ncol(data$l) == 1 || ncol(data$l) == na)
+  }
+  # w
+  if (!is.null(data$w)) {
+    checkmate::assert_true(nrow(data$w) > 0)
+    checkmate::assert_true(ncol(data$w) == 1 || ncol(data$w) == na)
   }
 
-  #---------------- Check required data ---------------------------------------#
+  # Check values ---------------------------------------------------------------
 
-  # Tag releases
-  checkmate::assert_matrix(data$x, mode = "integerish", any.missing = FALSE)
-  checkmate::assert_matrix(data$x, ncols = 4, null.ok = FALSE)
-  checkmate::assert_numeric(data$x, lower = 0, null.ok = FALSE)
-  checkmate::assert_true(colnames(data$x)[1] == "release_step")
-  checkmate::assert_true(colnames(data$x)[2] == "release_area")
-  checkmate::assert_true(colnames(data$x)[3] == "group")
-  checkmate::assert_true(colnames(data$x)[4] == "count")
-  # Tag recoveries
-  checkmate::assert_matrix(data$y, mode = "integerish", any.missing = FALSE)
-  checkmate::assert_matrix(data$y, ncols = 6, null.ok = FALSE)
-  checkmate::assert_numeric(data$y, lower = 0, null.ok = FALSE)
-  checkmate::assert_true(colnames(data$y)[1] == "release_step")
-  checkmate::assert_true(colnames(data$y)[2] == "release_area")
-  checkmate::assert_true(colnames(data$y)[3] == "group")
-  checkmate::assert_true(colnames(data$y)[4] == "recover_step")
-  checkmate::assert_true(colnames(data$y)[5] == "recover_area")
-  checkmate::assert_true(colnames(data$y)[6] == "count")
-  # Index matrix
+  # z
   checkmate::assert_true(all(diag(data$z) == 0L))
+  # w
+  if (!is.null(data$w)) checkmate::assert_true(all(colMeans(w) == 1))
 
-  # Check index matrix ---------------------------------------------------------
+  # Check not f and m null -----------------------------------------------------
 
-  checkmate::assert_matrix(data$z, mode = "integerish")
-  checkmate::assert_matrix(data$z, any.missing = FALSE)
-  checkmate::assert_numeric(data$z, lower = 0, upper = 1)
-  checkmate::assert_true(nrow(data$z) == ncol(data$z))
-
-  # Set default data -----------------------------------------------------------
-
-  if (is.null(data$l)) l <- matrix(1, nrow = 1L, ncol = 1L)
-  if (is.null(data$w)) w <- matrix(1, nrow = 1L, ncol = 1L)
-
-  # Check data arguments -------------------------------------------------------
-
-  # Tag reporting rate
-  checkmate::assert_matrix(l, mode = "double")
-  checkmate::assert_matrix(l, any.missing = FALSE)
-  checkmate::assert_numeric(l, lower = 0)
-  # checkmate::assert_true(ncol(l) == 1 || ncol(l) == na)
-  # Fishing rate weighting
-  checkmate::assert_matrix(w, mode = "double")
-  checkmate::assert_matrix(w, any.missing = FALSE)
-  checkmate::assert_numeric(w, lower = 0)
-  # checkmate::assert_true(ncol(w) == 1 || ncol(w) == na)
-  checkmate::assert_true(all(colMeans(w) == 1))
-
+  if (is.null(data$f) && is.null(data$m)) {
+    stop("matrix f or scalar m must be defined in the data")
+  }
 }
 
 #' Check Parameters Argument for mmmFit()
 #'
 #' @param parameters [list()]
 #'
-#' @return
-#'
-#' @examples
+#' @return NULL
 #'
 check_parameters <- function (parameters) {
 
-  # Check parameters argument --------------------------------------------------
+  # Check parameters -----------------------------------------------------------
 
   checkmate::assert_list(parameters, null.ok = TRUE)
-  # Optional initial values
+
+  # Check p --------------------------------------------------------------------
+
   checkmate::assert_array(parameters$p, mode = "double", null.ok = TRUE)
   checkmate::assert_array(parameters$p, d = 3L, null.ok = TRUE)
-  # Optionally data
+
+  # Check f --------------------------------------------------------------------
+
   checkmate::assert_matrix(parameters$f, mode = "double", null.ok = TRUE)
   checkmate::assert_numeric(parameters$f, lower = 0, null.ok = TRUE)
-  checkmate::assert_double(parameters$m, lower = 0, len = 1, null.ok = TRUE)
+  checkmate::assert_numeric(parameters$f, finite = TRUE, null.ok = TRUE)
 
-  #---------------- Check arguments for tmb_parameters ------------------------#
+  # Check m --------------------------------------------------------------------
 
-  # # Movement parameter array
-  # checkmate::assert_array(p, mode = "double", any.missing = FALSE, d = 3)
-  # checkmate::assert_true(dim(p)[1] == npt, na.ok = FALSE)
-  # checkmate::assert_true(dim(p)[2] == np, na.ok = FALSE)
-  # checkmate::assert_true(dim(p)[3] == ng, na.ok = FALSE)
-  # # Fishing rate matrix
-  # checkmate::assert_matrix(f, mode = "double", any.missing = FALSE)
-  # checkmate::assert_numeric(f, lower = 0, null.ok = TRUE)
-  # checkmate::assert_true(dim(f)[1] == nft, na.ok = FALSE)
-  # checkmate::assert_true(dim(f)[2] == nfa, na.ok = FALSE)
+  checkmate::assert_numeric(parameters$m, lower = 0, len = 1, null.ok = TRUE)
+  checkmate::assert_numeric(parameters$m,  finite = TRUE, null.ok = TRUE)
+
+  # Check b --------------------------------------------------------------------
+
+  checkmate::assert_numeric(parameters$b, lower = 0, null.ok = TRUE)
+  checkmate::assert_numeric(parameters$b, finite = TRUE, null.ok = TRUE)
+
+  # Check k --------------------------------------------------------------------
+
+  checkmate::assert_numeric(parameters$k, lower = 0, len = 1, null.ok = TRUE)
+  checkmate::assert_numeric(parameters$k,  finite = TRUE, null.ok = TRUE)
+
 }
 
 #' Check Settings Argument for mmmFit()
 #'
 #' @param settings [list()]
 #'
-#' @return
-#'
-#' @examples
+#' @return NULL
 #'
 check_settings <- function (settings) {
 
   # Check settings -------------------------------------------------------------
 
-  # Check settings
   checkmate::assert_list(settings, null.ok = FALSE)
-  # Check error family
+
+  # Check error family ---------------------------------------------------------
+
   checkmate::assert_integerish(settings$error_family, len = 1)
   checkmate::assert_integerish(settings$error_family, lower = 0, upper = 2)
   checkmate::assert_integerish(settings$error_family, any.missing = FALSE)
-  # Check max liberty
+
+  # Check max liberty ----------------------------------------------------------
+
   checkmate::assert_integerish(settings$max_liberty, lower = 0, len = 1)
   checkmate::assert_integerish(settings$max_liberty, any.missing = FALSE)
-  # Check time varying
+
+  # Check time varying ---------------------------------------------------------
+
   checkmate::assert_integerish(settings$time_varying, len = 1)
   checkmate::assert_integerish(settings$time_varying, lower = 0, upper = 1)
   checkmate::assert_integerish(settings$time_varying, any.missing = FALSE)
-  # Check time process
+
+  # Check time process ---------------------------------------------------------
+
   checkmate::assert_integerish(settings$time_process, len = 1)
   checkmate::assert_integerish(settings$time_process, lower = 0, upper = 1)
   checkmate::assert_integerish(settings$time_process, any.missing = FALSE)
-  # Check cycle length
+
+  # Check cycle length ---------------------------------------------------------
+
   checkmate::assert_integerish(settings$cycle_length, len = 1)
   checkmate::assert_integerish(settings$cycle_length, lower = 0)
   checkmate::assert_integerish(settings$cycle_length, any.missing = FALSE)
-  # Check block length
+
+  # Check block length ---------------------------------------------------------
+
   checkmate::assert_integerish(settings$block_length, len = 1)
   checkmate::assert_integerish(settings$block_length, lower = 0)
   checkmate::assert_integerish(settings$block_length, any.missing = FALSE)
-  # Check results step
+
+  # Check results step ---------------------------------------------------------
+
   checkmate::assert_integerish(settings$results_step, len = 1)
   checkmate::assert_integerish(settings$results_step, lower = 1)
   checkmate::assert_integerish(settings$results_step, any.missing = FALSE)
-  # Check nlminb loops
+
+  # Check nlminb loops ---------------------------------------------------------
+
   checkmate::assert_integerish(settings$nlminb_loops, len = 1)
   checkmate::assert_integerish(settings$nlminb_loops, lower = 0)
   checkmate::assert_integerish(settings$nlminb_loops, any.missing = FALSE)
-  # Check newton iterations
+
+  # Check newton iterations ----------------------------------------------------
+
   checkmate::assert_integerish(settings$newton_iters, len = 1)
   checkmate::assert_integerish(settings$newton_iters, lower = 0)
   checkmate::assert_integerish(settings$newton_iters, any.missing = FALSE)
-  # Check OpenMP cores
+
+  # Check OpenMP cores ---------------------------------------------------------
+
   checkmate::assert_integerish(settings$openmp_cores, len = 1)
   checkmate::assert_integerish(settings$openmp_cores, lower = 1)
   checkmate::assert_integerish(settings$openmp_cores, any.missing = FALSE)
@@ -184,8 +225,6 @@ check_settings <- function (settings) {
 #' @param sd_report [sdreport()] See [TMB::sdreport()].
 #'
 #' @return [list()]
-#'
-#' @examples
 #'
 get_convergence_diagnostics <- function(sd_report) {
   final_grads <- sd_report$gradient.fixed
