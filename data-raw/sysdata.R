@@ -1,20 +1,43 @@
-# # Fit
-# fit_list <- mmmTMB(
-#   released_3d = sim_released_3d,
-#   recovered_5d = sim_recovered_5d,
-#   capture_rate_2d = sim_capture_rate_2d,
-#   report_ratio_2d = sim_report_ratio_2d,
-#   tag_loss_rate = 0.02,
-#   imm_loss_ratio = 0.1,
-#   template_2d = sim_template_2d,
-#   openmp_cores = floor(parallel::detectCores() / 2))
-# # Extract
-# smp <- subset_by_name(fit_list$model$par, "movement_parameters_3d")
-# smp_3d <- fit_list$adfun$report()$movement_parameters_3d
-# smp_4d <- fit_list$adfun$report()$movement_probability_4d
-# # Create
-# sysdata <- list(sim_movement_parameters = smp,
-#                 sim_movement_parameters_3d = smp_3d,
-#                 sim_movement_probability_4d = smp_4d)
-# # Write to R/sysdata.rda
+# Three areas with yearly movement
+# Data
+sim_x <- create_release_matrix()
+sim_z <- mmmIndex(3)
+sim_f <- as.matrix(0.04)
+sim_m <- 0.1
+sim_h <- 0.02
+sim_u <- 0.1
+# Movement rates
+sim_r <- matrix(c(0.9, 0.1, 0.0,
+                  0.1, 0.8, 0.1,
+                  0.0, 0.3, 0.7), byrow = TRUE, nrow = 3)
+dim(sim_r) <- c(3, 3, 1, 1)
+# Movement parameters
+sim_p <- create_movement_parameters(sim_r, sim_z)
+# Arguments
+data <- list(x = sim_x, z = sim_z, f = sim_f, m = sim_m, h = sim_h, u = sim_u)
+parameters <- list(p = sim_p)
+# Simulate
+sim <- mmmSim(data, parameters)
+# Augment data
+data$y <- sim$simulation$y
+# define settings
+settings <- mmmSet(
+  error_family = 0,
+  nlminb_loops = 5,
+  newton_iters = 5,
+  openmp_cores = 6
+)
+# Fit
+fit <- mmmFit(
+  data = data,
+  parameters = NULL,
+  settings = settings,
+  control = mmmControl()
+)
+# Define sysdata
+sysdata <- list(
+  sim = sim,
+  fit = fit
+)
+# Write to R/sysdata.rda
 # usethis::use_data(sysdata, internal = TRUE, overwrite = TRUE)
