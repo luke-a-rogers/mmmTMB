@@ -78,7 +78,7 @@ data_list <- list(
   y = y,
   z = z,
   l = l,
-  # f = f,
+  f = f,
   m = m,
   h = h,
   u = u
@@ -206,9 +206,6 @@ fit <- mmmFit(
 
 # Show movement results
 fit$results
-fit$results$movement_rate
-fit$results$natural_mortality
-fit$results$dispersion
 fit$parameters
 
 ```
