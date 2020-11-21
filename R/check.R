@@ -69,10 +69,10 @@ check_data <- function (data = NULL) {
 
   # Define index limits --------------------------------------------------------
 
-  nt <- max(c(x[, "release_step"], y[, "recover_step"])) + 1L # From zero
-  na <- max(c(x[, "release_area"], y[, "recover_area"])) + 1L # From zero
-  ng <- max(c(x[, "group"], y[, "group"])) + 1L # Indexed from zero for TMB
-  np <- as.integer(sum(z))
+  nt <- max(c(data$x[, "release_step"], data$y[, "recover_step"])) + 1L
+  na <- max(c(data$x[, "release_area"], data$y[, "recover_area"])) + 1L
+  ng <- max(c(data$x[, "group"], data$y[, "group"])) + 1L # Indexed from zero
+  np <- as.integer(sum(data$z))
 
   # Check dimensions -----------------------------------------------------------
 
@@ -95,7 +95,7 @@ check_data <- function (data = NULL) {
   # z
   checkmate::assert_true(all(diag(data$z) == 0L))
   # w
-  if (!is.null(data$w)) checkmate::assert_true(all(colMeans(w) == 1))
+  if (!is.null(data$w)) checkmate::assert_true(all(colMeans(data$w) == 1))
 
   # Check not f and m null -----------------------------------------------------
 
