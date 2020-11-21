@@ -1,7 +1,7 @@
-#' Plot Movement Probabilities from an 'mmmTMB' Object
+#' Plot Movement Rate Heatmap Matrix
 #'
-#' @param x An object of class \code{mmmTMB}
-#' @param class [integer()] Release class
+#' @param x An object of class \code{mmmFit}
+#' @param group [integer()] Release group
 #' @param xlab [character()] The x label of the plot
 #' @param ylab [character()] The y label of the plot
 #' @param area_names [character()] Vector of area names
@@ -16,34 +16,32 @@
 #'
 #' @export
 #'
-#' @examples
-#'
-plot.mmmTMB <- function (x = NULL,
-                         class = 1,
-                         xlab = "Area To",
-                         ylab = "Area From",
-                         area_names = NULL,
-                         font_size_probs = 3,
-                         font_nudge_probs = 0.15,
-                         font_size_stderr = 2,
-                         font_nudge_stderr = 0.15,
-                         legend_name = "Estimate",
-                         legend_position = "right") {
+mmmHeatmap <- function (x = NULL,
+                        group = 1,
+                        xlab = "Area To",
+                        ylab = "Area From",
+                        area_names = NULL,
+                        font_size_probs = 3,
+                        font_nudge_probs = 0.15,
+                        font_size_stderr = 2,
+                        font_nudge_stderr = 0.15,
+                        legend_name = "Estimate",
+                        legend_position = "right") {
 
-  #---------------- Check arguments -------------------------------------------#
+  # Check arguments ------------------------------------------------------------
 
 
-  #---------------- Extract movement results data -----------------------------#
+  # Define x -------------------------------------------------------------------
 
-  if (is.element("mmmTMB", class(x))) {
-    x <- x$results$movement_probability_results
-    x_inds <- which(x$Class == class)
+  if (is.element("mmmFit", class(x))) {
+    x <- x$results$movement_rate
+    x_inds <- which(x$Group == group)
     x <- x[x_inds,]
   } else if (is.data.frame(x)) {
     # TODO: Check appropriate columns are present
-    x_inds <- which(x$Class == class)
+    x_inds <- which(x$Group == group)
     x <- x[x_inds,]
-  } else if (!is.null(x)) {
+  } else {
     warning("x not as expected")
   }
 
@@ -115,7 +113,7 @@ plot.mmmTMB <- function (x = NULL,
         margin = ggplot2::margin(t = -2)))
 }
 
-#' Lineplot Movement Rates from an 'mmmTMB' Object
+#' Lineplot Movement Rates from an 'mmmFit' Object
 #'
 #' @param x An object of class \code{mmmTMB}
 #' @param x_name [character()] Axis name
@@ -137,7 +135,7 @@ plot.mmmTMB <- function (x = NULL,
 #'
 #' @examples
 #'
-lineplot <- function (x = NULL,
+mmmLineplot <- function (x = NULL,
                       x_name = "Year",
                       y_name = "Annual Movement Rate",
                       x_breaks = NULL,
@@ -156,12 +154,12 @@ lineplot <- function (x = NULL,
 
   #---------------- Extract movement results data -----------------------------#
 
-  if (is.element("mmmTMB", class(x))) {
-    d <- x$results$movement_probability_results
+  if (is.element("mmmFit", class(x))) {
+    d <- x$results$movement_rate
   } else if (is.data.frame(x)) {
     # TODO: Check appropriate columns are present
     d <- x
-  } else if (!is.null(x)) {
+  } else {
     warning("x not as expected")
   }
 
@@ -235,7 +233,6 @@ lineplot <- function (x = NULL,
 #' @param digits [numeric] Number of digits
 #'
 #' @return [character()]
-#' @export
 #'
 #' @examples
 #' sensibly_round(c(0.0005, 0.0010, 0.0015), 3)
@@ -261,22 +258,22 @@ sensibly_round <- function (x, digits) {
 #'
 #' @examples
 #'
-barplot.mmmTMB <- function (x = NULL, area_names = NULL) {
+mmmBarplot <- function (x = NULL, area_names = NULL) {
 
   #---------------- Check arguments -------------------------------------------#
 
 
   #---------------- Extract movement results data -----------------------------#
 
-  if (is.element("mmmTMB", class(x))) {
-    x <- x$results$movement_probability_results
+  if (is.element("mmmFit", class(x))) {
+    x <- x$results$movement_rate
     # x_inds <- which(x$Class == class)
     # x <- x[x_inds,]
   } else if (is.data.frame(x)) {
     # TODO: Check appropriate columns are present
     # x_inds <- which(x$Class == class)
     # x <- x[x_inds,]
-  } else if (!is.null(x)) {
+  } else {
     warning("x not as expected")
   }
 
