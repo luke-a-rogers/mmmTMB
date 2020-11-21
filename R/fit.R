@@ -198,7 +198,7 @@ mmmFit <- function (data,
 
   # Create tmb data ------------------------------------------------------------
 
-  cat("creating tmb_data \n")
+  cat("\ncreating tmb_data \n")
   tmb_data <- list(
     tx = t(x), # Tag release matrix
     ty = t(y), # Tag recovery matrix
@@ -262,7 +262,6 @@ mmmFit <- function (data,
 
   # Set OpenMP cores -----------------------------------------------------------
 
-  cat("using", openmp_cores, "openmp cores\n")
   TMB::openmp(n = settings$openmp_cores)
 
   # Create ADFun object --------------------------------------------------------
