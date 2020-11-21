@@ -415,7 +415,7 @@ create_mortality_results <- function (logit_exp_neg_m,
 }
 
 
-#' Creatte Fishing Rate Results
+#' Create Fishing Rate Results
 #'
 #' @param vlogit_exp_neg_tf [numeric()] Vector estimates.
 #' @param mlogit_exp_neg_tf_cov [matrix()] Covariances.
@@ -492,6 +492,55 @@ create_fishing_results <- function (vlogit_exp_neg_tf,
     f_fit = f_fit,
     f_results = f_results,
     f_results_se = f_results_se
+  ))
+}
+
+#' Create Fishing Mortality Bias Results
+#'
+#' @param log_b [numeric()] Vector.
+#' @param log_b_cov [matrix()] Covariances.
+#' @param estimate [logical()] Estimate or return NULL.
+#'
+#' @return [list()]
+#' @export
+#'
+#' @examples
+#'
+create_bias_results <- function (log_b = log_b,
+                                 log_b_cov = log_b_cov,
+                                 estimate = estimate_b) {
+
+  if (estimate) {
+    # Estimate
+    b_fit <- exp(log_b)
+    b_results <- b_fit
+    # Compute draws
+    log_b_draws <- MASS::mvrnorm(
+      n = 1000,
+      mu = log_b,
+      Sigma = log_b_cov
+    )
+    # Untransform
+    b_draws <- exp(log_b_draws)
+    # Compute SE
+    b_results_se <- apply(b_draws, 2, sd, na.rm = TRUE)
+    # Rename
+    names(b_fit) <- NULL
+    names(b_results) <- NULL
+    names(b_results_se) <- NULL
+  } else {
+    b_fit <- NULL
+    b_results <- NULL
+    b_results_se <- NULL
+  }
+  # Data frame
+  fishing_bias <- data.frame(Estimate = b_results, SE = b_results_se)
+  # Return
+  return(list(
+    fishing_bias = fishing_bias,
+    b_fit = b_fit,
+    b_results = b_results,
+    b_results_se = b_results_se
   ))
 }
 
