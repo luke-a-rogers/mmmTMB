@@ -21,52 +21,27 @@ knitr::opts_chunk$set(
 library(mmmTMB)
 ```
 
-## Populate Data List
-```{r create-data-list}
-data_list <- list(
-  mT = sim$mT,
-  mR = sim$mR,
-  mI = sim$mI,
-  mL = sim$mL,
-  mW = sim$mW,
-  mF = sim$mF,
-  sM = sim$sM,
-  sH = sim$sH,
-  sC = sim$sC
-)
-
-```
-
-## Populate Parameter List
-```{r create-parameter-list}
+# Fit to simulated data
+```{r fit-to-sim}
+# Data
+data_list <- sim_data
+# Parameters
 parameters_list <- NULL
-
-
-```
-
-## Population Settings List
-```{r create-settings-list}
 # Settings
 settings_list <- mmmSet(
-  error_family = 1,
-  span_liberty = c(1, 30),
+  error_family = 0,
   nlminb_loops = 5,
-  newton_steps = 5,
+  newton_iters = 5,
   openmp_cores = 6)
-
-```
-
-
-## Fit To Data
-```{r fit-to-data}
 # Fit
 fit <- mmmFit(
   data = data_list,
   parameters = parameters_list,
-  random = NULL,
-  map = NULL,
   settings = settings_list,
   control = mmmControl(trace = 5)
 )
+# Inspect results
+fit$results
 
 ```
+
