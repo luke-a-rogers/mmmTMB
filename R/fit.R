@@ -85,6 +85,8 @@ mmmFit <- function (data,
   x <- data$x # Tag releases
   y <- data$y # Tag recoveries
   z <- data$z # Movement index
+  h <- data$h # Instantaneous tag loss rate
+  u <- data$u # Initial tag loss proportion
 
   # Assign optional data -------------------------------------------------------
 
@@ -98,8 +100,9 @@ mmmFit <- function (data,
 
   # Assign parameters ----------------------------------------------------------
 
-  if (!is.null(parameters$p)) p <- parameters$p else p <- NULL
-  if (!is.null(parameters$k)) k <- parameters$k else k <- NULL
+  if (!is.null(parameters$p)) p <- parameters$p else p <- NULL # Movement
+  if (!is.null(parameters$b)) b <- parameters$b else b <- NULL # Fishing bias
+  if (!is.null(parameters$k)) k <- parameters$k else k <- NULL # NB Dispersion
 
   # Assign settings ------------------------------------------------------------
 
@@ -114,13 +117,6 @@ mmmFit <- function (data,
   nlminb_loops <- settings$nlminb_loops
   newton_iters <- settings$newton_iters
   openmp_cores <- settings$openmp_cores
-
-  # Estimate parameter? --------------------------------------------------------
-
-  estimate_p <- TRUE
-  estimate_f <- ifelse(is.null(data$f), TRUE, FALSE)
-  estimate_m <- ifelse(is.null(data$m), TRUE, FALSE)
-  estimate_k <- ifelse(error_family, TRUE, FALSE)
 
   # Set index limits -----------------------------------------------------------
 
@@ -174,12 +170,30 @@ mmmFit <- function (data,
     vpt <- rep(0L, nt) # Index from zero for TMB
   }
 
+  # Estimate parameter? --------------------------------------------------------
+
+  estimate_p <- TRUE
+  estimate_f <- ifelse(is.null(data$f), TRUE, FALSE)
+  estimate_m <- ifelse(is.null(data$m), TRUE, FALSE)
+  estimate_b <- ifelse(!estimate_f | ng > 1, TRUE, FALSE)
+  estimate_k <- ifelse(error_family, TRUE, FALSE)
+
   # Assign default initial parameter values ------------------------------------
 
-  if(is.null(p)) p <- array(0, dim = c(npt, np, ng)) # Movement parameters
-  if(is.null(f)) f <- array(0.10, dim = c(nft, nfa)) # Fishing rates
-  if(is.null(m)) m <- 0.10 # Natural mortality rate
-  if(is.null(k)) k <- 1L # Negative binomial dispersion parameter
+  if (is.null(p)) p <- array(0, dim = c(npt, np, ng)) # Movement parameters
+  if (is.null(f)) f <- array(0.10, dim = c(nft, nfa)) # Fishing rates
+  if (is.null(m)) m <- 0.10 # Natural mortality rate
+  if (is.null(b)) b <- rep(1, ng) # Fishing bias
+  if (is.null(k)) k <- 1L # Negative binomial dispersion parameter
+
+  # Confirm parameter dimensions -----------------------------------------------
+
+  if (!all(dim(p) == c(npt, np, ng))) stop("dim(p) must equal c(npt, np, ng)\n")
+  if (!(ncol(f) == 1 || ncol(f) == na)) stop("ncol(f) must equal one or na\n")
+  if (nrow(f) < 1) stop("nrow(f) must be greater than zero\n")
+  if (length(m) != 1) stop("length(m) must be one")
+  if (length(b) != ng) stop("length(b) must equal ng\n")
+  if (length(k) != 1) stop("length(k) must be one")
 
   # Create tmb data ------------------------------------------------------------
 
@@ -226,6 +240,7 @@ mmmFit <- function (data,
     tp = aperm(p, c(2,1,3)), # Movement parameters
     logit_exp_neg_tf = logit(exp(-(t(f)))), # Fishing mortality
     logit_exp_neg_m = logit(exp(-(m))), # Natural mortality
+    log_b = log(b), # Fishing bias
     log_k = log(k) # Negative binomial dispersion
   )
 
@@ -236,11 +251,13 @@ mmmFit <- function (data,
   # Default
   if (!is.null(data$f)) tmb_map$logit_exp_neg_tf <- factor(rep(NA, nfa * nft))
   if (!is.null(data$m)) tmb_map$logit_exp_neg_m <- as.factor(NA)
+  if (!estimate_b) tmb_map$log_b <- as.factor(rep(NA, ng))
   if (error_family == 0) tmb_map$log_k <- as.factor(NA)
   # User defined
   if (!is.null(map$p)) tmb_map$tp <- aperm(map$p, c(2, 1, 3))
   if (!is.null(map$f)) tmb_map$logit_exp_neg_tf <- t(map$f)
   if (!is.null(map$m)) tmb_map$logit_exp_neg_m <- map$m
+  if (!is.null(map$b)) tmb_map$log_b <- map$b
 
   # Set OpenMP cores -----------------------------------------------------------
 
@@ -359,6 +376,18 @@ mmmFit <- function (data,
     estimate = estimate_f
   )
 
+  # Compute fishing mortality bias results -------------------------------------
+
+  # Extract values
+  log_b <- subset_by_name(model$par, "log_b")
+  log_b_cov <- subset_by_name(sd_report$cov.fixed, "log_b")
+  # Compute
+  fishing_bias_list <- create_bias_results(
+    log_b = log_b,
+    log_b_cov = log_b_cov,
+    estimate = estimate_b
+  )
+
   # Compute dispersion results -------------------------------------------------
 
   # Extract values
@@ -377,6 +406,7 @@ mmmFit <- function (data,
     movement_rate = movement_list$movement_rate,
     natural_mortality = mortality_list$natural_mortality,
     fishing_rate = fishing_rate_list$fishing_rate,
+    fishing_bias = fishing_bias_list$fishing_bias,
     dispersion = dispersion_list$dispersion
   )
 
