@@ -7,14 +7,18 @@
 logit(x)
 }
 \arguments{
-\item{x}{Numeric between zero and one(inclusive)}
+\item{x}{\code{\link[=numeric]{numeric()}} Value between zero and one (inclusive).}
 }
 \value{
-The log of the odds ratio
+\code{\link[=numeric]{numeric()}} The log of the odds ratio.
 }
 \description{
 Logit (Log Odds Ratio)
 }
 \examples{
+logit(0)
+logit(0.5)
+logit(1)
+logit(matrix(c(0, 0.5, 0.5, 1), nrow = 2))
 
 }

@@ -24,7 +24,7 @@ A matrix of class \code{mmmRates}.
 }
 \description{
 Prepare fishing mortality or tag reporting rate data prior
-to fitting a Markovian movement model via \code{mmmFit()}.
+to fitting a Markov movement model via \code{mmmFit()}.
 }
 \details{
 The rate time step may differ from tag time step, as long as
@@ -33,9 +33,9 @@ the tag time step is a multiple of the rate time step.
 The \code{x} argument must be data frames that contains:
 
 \itemize{
-\item An \code{\link[=integer]{integer()}} column giving the date (integers for now).
-\item An \code{\link[=atomic]{atomic()}} column giving the areas (see \code{areas} argument).
-\item A \code{\link[=numeric]{numeric()}} column giving the rate for the given area and date.
+\item \code{\link[=integer]{integer()}} column giving the date (integers for now).
+\item \code{\link[=atomic]{atomic()}} column giving the areas (see \code{areas} argument).
+\item \code{\link[=numeric]{numeric()}} column giving the rate for the given area and date.
 }
 
 The \code{cols} argument is a \code{\link[=list]{list()}} of named elements. The elements

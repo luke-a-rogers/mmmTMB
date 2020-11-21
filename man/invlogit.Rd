@@ -7,7 +7,7 @@
 invlogit(y)
 }
 \arguments{
-\item{y}{Numeric}
+\item{y}{\code{\link[=numeric]{numeric()}} Finite or infinite scalar.}
 }
 \value{
 The inverse of the log odds ratio
@@ -16,5 +16,9 @@ The inverse of the log odds ratio
 Inverse Logit
 }
 \examples{
+invlogit(Inf)
+invlogit(0)
+invlogit(-Inf)
+invlogit(matrix(c(-Inf, 0, 0, Inf), nrow = 2))
 
 }

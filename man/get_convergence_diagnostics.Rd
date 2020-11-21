@@ -17,6 +17,3 @@ Get convergence diagnostics from a TMB model fit.
 This function is from the sdmTMB' package at
 github.com/pbs-assess/sdmTMB/blob/master/R/fit.R
 }
-\examples{
-
-}

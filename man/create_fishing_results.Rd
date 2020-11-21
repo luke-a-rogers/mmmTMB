@@ -2,11 +2,12 @@
 % Please edit documentation in R/convert.R
 \name{create_fishing_results}
 \alias{create_fishing_results}
-\title{Creatte Fishing Rate Results}
+\title{Create Fishing Rate Results}
 \usage{
 create_fishing_results(
   vlogit_exp_neg_tf,
   mlogit_exp_neg_tf_cov,
+  results_step,
   nft,
   nfa,
   estimate
@@ -27,8 +28,5 @@ create_fishing_results(
 \code{\link[=list]{list()}}
 }
 \description{
-Creatte Fishing Rate Results
-}
-\examples{
-
+Create Fishing Rate Results
 }

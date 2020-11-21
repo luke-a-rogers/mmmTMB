@@ -26,6 +26,3 @@ create_mortality_results(
 \description{
 Create Natural Mortality Results
 }
-\examples{
-
-}

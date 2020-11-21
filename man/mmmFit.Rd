@@ -70,6 +70,7 @@ values:
 \item \code{p} An array of movement parameters. See TBD.
 \item \code{f} A matrix of fishing mortality rates. See \code{settings}.
 \item \code{m} The scalar instantaneous natural mortality rate.
+\item \code{b} The vector fishing mortality bias by group.
 \item \code{k} The scalar negative binomial dispersion.
 }
 }

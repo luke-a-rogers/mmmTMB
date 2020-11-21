@@ -7,12 +7,12 @@
 mmmGroup(x, groups)
 }
 \arguments{
-\item{x}{A vector}
+\item{x}{\code{\link[=atomic]{atomic()}} Vector of values.}
 
-\item{groups}{A list of named group vectors}
+\item{groups}{\code{\link[=list]{list()}} Named vectors of group elements.}
 }
 \value{
-An integer vector
+\code{\link[=integer]{integer()}} Vector.
 }
 \description{
 Map Values to Groups

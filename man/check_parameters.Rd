@@ -9,12 +9,6 @@ check_parameters(parameters)
 \arguments{
 \item{parameters}{\code{\link[=list]{list()}}}
 }
-\value{
-
-}
 \description{
 Check Parameters Argument for mmmFit()
-}
-\examples{
-
 }

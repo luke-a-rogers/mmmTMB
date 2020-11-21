@@ -4,12 +4,12 @@
 \alias{matrix_power}
 \title{Matrix Power}
 \usage{
-matrix_power(x, n)
+matrix_power(x, pow)
 }
 \arguments{
-\item{x}{\code{\link[=matrix]{matrix()}} Numeric matrix}
+\item{x}{\code{\link[=matrix]{matrix()}} Square numeric matrix.}
 
-\item{n}{\code{\link[=integer]{integer()}} Matrix power}
+\item{pow}{\code{\link[=integer]{integer()}} Matrix power.}
 }
 \value{
 \code{\link[=matrix]{matrix()}}
@@ -20,7 +20,7 @@ Matrix Power
 \examples{
 
 x <- matrix(c(1,2,3,4), nrow = 2)
-n <- 2
-matrix_power(x, n)
+pow <- 2
+matrix_power(x, pow)
 
 }

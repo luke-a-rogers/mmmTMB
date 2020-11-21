@@ -9,12 +9,6 @@ check_data(data = NULL)
 \arguments{
 \item{data}{\code{\link[=list]{list()}}}
 }
-\value{
-
-}
 \description{
 Check Data Argument for mmmFit()
-}
-\examples{
-
 }

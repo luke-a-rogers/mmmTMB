@@ -36,25 +36,25 @@ A list object of class \code{mmmTags}.
 }
 \description{
 Prepare tag release and recovery data prior to fitting
-a Markovian movement model via \code{mmmFit()}.
+a Markov movement model via \code{mmmFit()}.
 }
 \details{
 The \code{x} & \code{y} arguments must be data frames that contain
 certain columns that have the same column name in both data frames.
 Both \code{x} & \code{y} must include:
 \itemize{
-\item A \code{\link[=character]{character()}} column giving unique individual tag IDs.
-\item A \code{\link[=Date]{Date()}} column giving individual tag release dates.
-\item An \code{\link[=integer]{integer()}} column giving release areas indexed from one.
+\item \code{\link[=character]{character()}} column giving unique individual tag IDs.
+\item \code{\link[=Date]{Date()}} column giving individual tag release dates.
+\item \code{\link[=integer]{integer()}} column giving release areas indexed from one.
 }
 In addition, \code{y} must include:
 \itemize{
-\item A \code{\link[=Date]{Date()}} column giving individual tag recovery dates.
-\item An \code{\link[=integer]{integer()}} column giving recovery areas indexed from one.
+\item \code{\link[=Date]{Date()}} column giving individual tag recovery dates.
+\item \code{\link[=integer]{integer()}} column giving recovery areas indexed from one.
 }
 Optionally, both \code{x} & \code{y} can include:
 \itemize{
-\item An \code{\link[=atomic]{atomic()}} column giving values grouped by \code{groups}.
+\item \code{\link[=atomic]{atomic()}} column giving values grouped by \code{groups}.
 }
 Note that \code{\link[=character]{character()}} columns in \code{"\%Y-\%M-\%D"} format may be substituted
 for \code{\link[=Date]{Date()}} columns.

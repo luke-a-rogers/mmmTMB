@@ -19,6 +19,3 @@ create_dispersion_results(log_k, log_k_se, estimate)
 \description{
 Create Dispersion Results
 }
-\examples{
-
-}

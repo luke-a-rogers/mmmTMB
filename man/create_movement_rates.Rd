@@ -7,16 +7,30 @@
 create_movement_rates(p, z)
 }
 \arguments{
-\item{p}{Numeric array. Movement parameters. (Not transposed).}
+\item{p}{\code{\link[=array]{array()}} Movement parameters.}
 
-\item{z}{Integer matrix. Movement indexes. (Not transposed).}
+\item{z}{\code{\link[=matrix]{matrix()}} Movement index..}
 }
 \value{
-\code{\link[=array]{array()}} Movement rates
+\code{\link[=array]{array()}} Movement rates.
 }
 \description{
 Create Movement Rate Array
 }
 \examples{
+# 2x2
+x <- array(c(0.9, 0.2, 0.1, 0.8, 0.7, 0.4, 0.3, 0.6), dim = c(2, 2, 2, 1))
+z <- array(c(0, 1, 1, 0), dim = c(2, 2))
+p <- create_movement_parameters(x, z)
+r <- create_movement_rates(p, z)
+all(x - r < 1e-12)
+
+# 3x3 with missing adjacent rates
+v <- c(0.9,0.1,0.3,0,0.8,0,0.1,0.1,0.7,0.6,0.2,0.6,0,0.5,0,0.4,0.3,0.4)
+x <- array(v, dim = c(3,3,2,1))
+z <- array(c(0,1,1,0,0,0,1,1,0), dim = c(3,3))
+p <- create_movement_parameters(x, z)
+r <- create_movement_rates(p, z)
+all(x - r < 1e-12)
 
 }

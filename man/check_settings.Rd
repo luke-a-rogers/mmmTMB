@@ -9,12 +9,6 @@ check_settings(settings)
 \arguments{
 \item{settings}{\code{\link[=list]{list()}}}
 }
-\value{
-
-}
 \description{
 Check Settings Argument for mmmFit()
-}
-\examples{
-
 }

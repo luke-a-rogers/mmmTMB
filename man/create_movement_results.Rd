@@ -32,6 +32,3 @@ A \code{\link[=list]{list()}}
 \description{
 Create Movement Results
 }
-\examples{
-
-}
