@@ -7,10 +7,12 @@
 mmmWeights(tags, step = "month", nrows = 12L)
 }
 \arguments{
-\item{tags}{\code{\link[=mmmTMB]{mmmTMB()}} See \code{\link[=mmmTags]{mmmTags()}}.}
+\item{tags}{\code{\link[=mmmTags]{mmmTags()}} See \code{\link[=mmmTags]{mmmTags()}}.}
 
 \item{step}{\code{\link[=character]{character()}} Currently implemented for \code{"month"} only.
 Must equal the \code{step} element in \code{tags}.}
+
+\item{nrows}{\code{\link[=integer]{integer()}} Number of rows}
 }
 \value{
 A matrix of monthly weighting for fishing mortality rates.
@@ -20,7 +22,4 @@ Create a weighting for the fishing mortality rate when the
 fishing mortality rate is recorded at a larger time step than the tag
 release and recovery time step. The weighting is based on tag recoveries
 at the tag time step. Weights average to one for a given area.
-}
-\examples{
-
 }

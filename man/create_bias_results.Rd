@@ -4,11 +4,7 @@
 \alias{create_bias_results}
 \title{Create Fishing Mortality Bias Results}
 \usage{
-create_bias_results(
-  log_b = log_b,
-  log_b_cov = log_b_cov,
-  estimate = estimate_b
-)
+create_bias_results(log_b, log_b_cov, estimate)
 }
 \arguments{
 \item{log_b}{\code{\link[=numeric]{numeric()}} Vector.}

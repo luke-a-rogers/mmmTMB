@@ -18,6 +18,8 @@ create_fishing_results(
 
 \item{mlogit_exp_neg_tf_cov}{\code{\link[=matrix]{matrix()}} Covariances.}
 
+\item{results_step}{\code{\link[=integer]{integer()}} Results step as multiple of tag step.}
+
 \item{nft}{\code{\link[=integer]{integer()}} Number of fishing rate time steps.}
 
 \item{nfa}{\code{\link[=integer]{integer()}} Number of fishing rate areas.}

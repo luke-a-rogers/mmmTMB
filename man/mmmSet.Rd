@@ -19,31 +19,33 @@ mmmSet(
 )
 }
 \arguments{
-\item{error_family}{Integer. \code{0} = Poisson; \code{1} = NB1;
+\item{error_family}{\code{\link[=integer]{integer()}} \code{0} = Poisson; \code{1} = NB1;
 \code{2} = NB2.}
 
-\item{max_liberty}{Integer. Max time steps at liberty before
+\item{min_liberty}{\code{\link[=integer]{integer()}} Minimum time steps at liberty before recovery.}
+
+\item{max_liberty}{\code{\link[=integer]{integer()}} Maximum time steps at liberty before recovery.
 recapture.}
 
-\item{time_varying}{Integer. \code{0} = None; \code{1} = Time varying
+\item{time_varying}{\code{\link[=integer]{integer()}} \code{0} = None; \code{1} = Time varying
 movement rates.}
 
-\item{time_process}{Integer. \code{0} = None; \code{1} = Negative
+\item{time_process}{\code{\link[=integer]{integer()}} \code{0} = None; \code{1} = Negative
 binomial (NB1).}
 
-\item{cycle_length}{Integer. Cycle length or \code{0} for no cycle.}
+\item{cycle_length}{\code{\link[=integer]{integer()}} Cycle length or \code{0} for no cycle.}
 
-\item{block_length}{Integer. Block length for movement rate.}
+\item{block_length}{\code{\link[=integer]{integer()}} Block length for movement rate.}
 
-\item{results_step}{Integer. Results time step as a multiple of the data
+\item{results_step}{\code{\link[=integer]{integer()}} Results time step as a multiple of the data
 time step.}
 
-\item{nlminb_loops}{Integer. Number of times to run \code{\link[stats:nlminb]{stats::nlminb()}}
+\item{nlminb_loops}{\code{\link[=integer]{integer()}} Number of times to run \code{\link[stats:nlminb]{stats::nlminb()}}
 optimization.}
 
-\item{openmp_cores}{Integer. Number of parallel cores for TMB.}
+\item{newton_iters}{\code{\link[=integer]{integer()}} Number of Newton optimization steps.}
 
-\item{newton_steps}{Integer. Number of Newton optimization steps.}
+\item{openmp_cores}{\code{\link[=integer]{integer()}} Number of parallel cores for TMB.}
 }
 \value{
 A list of settings for \code{mmmFit()}

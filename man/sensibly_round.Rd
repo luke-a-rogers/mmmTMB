@@ -17,7 +17,3 @@ sensibly_round(x, digits)
 \description{
 Sensibly Round
 }
-\examples{
-sensibly_round(c(0.0005, 0.0010, 0.0015), 3)
-
-}
