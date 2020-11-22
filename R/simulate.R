@@ -266,7 +266,7 @@ mmmSim <- function(data,
                 (1L - exp(-b[mg] * tf[vfa[ra], vft[rt]] *
                             tw[vwa[ra], vwt[rt]])) *
                 tl[vla[ra], vlt[rt]]
-                Y_elem <- rpois(1L, Y_elem)
+                Y_elem <- stats::rpois(1L, Y_elem)
               Y[ra, rt, mg, ma, mt] <- round(Y_elem)
             }
           }
@@ -365,7 +365,7 @@ create_release_matrix <- function (n = 1000,
   g <- rep(c(seq_len(groups) - 1L), steps * areas)
   # Create counts
   if (errors) {
-    count <- rpois(n = steps * areas * groups, lambda = n)
+    count <- stats::rpois(n = steps * areas * groups, lambda = n)
   } else {
     count <- rep(n, steps * areas * groups)
   }

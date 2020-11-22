@@ -310,7 +310,7 @@ mmmFit <- function (data,
     for (i in seq_len(newton_iters)) {
       cat(paste0("running newton iter #", i, "\n"))
       g <- as.numeric(adfun$gr(model$par))
-      h <- optimHess(model$par, fn = adfun$fn, gr = adfun$gr)
+      h <- stats::optimHess(model$par, fn = adfun$fn, gr = adfun$gr)
       model$par <- model$par - solve(h, g)
       model$objective <- adfun$fn(model$par)
     }
@@ -451,22 +451,23 @@ mmmFit <- function (data,
 
 #' Settings for \code{mmmFit()}
 #'
-#' @param error_family Integer. \code{0} = Poisson; \code{1} = NB1;
+#' @param error_family [integer()] \code{0} = Poisson; \code{1} = NB1;
 #'   \code{2} = NB2.
-#' @param max_liberty Integer. Max time steps at liberty before
+#' @param min_liberty [integer()] Minimum time steps at liberty before recovery.
+#' @param max_liberty [integer()] Maximum time steps at liberty before recovery.
 #'   recapture.
-#' @param time_varying Integer. \code{0} = None; \code{1} = Time varying
+#' @param time_varying [integer()] \code{0} = None; \code{1} = Time varying
 #' movement rates.
-#' @param time_process Integer. \code{0} = None; \code{1} = Negative
+#' @param time_process [integer()] \code{0} = None; \code{1} = Negative
 #' binomial (NB1).
-#' @param cycle_length Integer. Cycle length or \code{0} for no cycle.
-#' @param block_length Integer. Block length for movement rate.
-#' @param results_step Integer. Results time step as a multiple of the data
+#' @param cycle_length [integer()] Cycle length or \code{0} for no cycle.
+#' @param block_length [integer()] Block length for movement rate.
+#' @param results_step [integer()] Results time step as a multiple of the data
 #'   time step.
-#' @param nlminb_loops Integer. Number of times to run [stats::nlminb()]
+#' @param nlminb_loops [integer()] Number of times to run [stats::nlminb()]
 #'   optimization.
-#' @param newton_steps Integer. Number of Newton optimization steps.
-#' @param openmp_cores Integer. Number of parallel cores for TMB.
+#' @param newton_iters [integer()] Number of Newton optimization steps.
+#' @param openmp_cores [integer()] Number of parallel cores for TMB.
 #'
 #' @return A list of settings for \code{mmmFit()}
 #' @export

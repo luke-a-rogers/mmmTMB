@@ -235,7 +235,7 @@ get_convergence_diagnostics <- function(sd_report) {
               "non-positive-definite Hessian matrix.", call. = FALSE)
     } else {
       eigval <- try(1 / eigen(sd_report$cov.fixed)$values, silent = TRUE)
-      if (is(eigval, "try-error") || (min(eigval) < .Machine$double.eps * 10)) {
+      if (methods::is(eigval, "try-error") || (min(eigval) < .Machine$double.eps * 10)) {
         warning("The model may not have converged: ",
                 "extreme or very small eigen values detected.", call. = FALSE)
         bad_eig <- TRUE

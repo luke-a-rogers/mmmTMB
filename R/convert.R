@@ -339,7 +339,7 @@ create_movement_results <- function (vtp, mtp, np, npt, ng, z, pow, draws) {
       for (ca in seq_len(na)) {
         for (pa in seq_len(na)) {
           r_results_se[pa, ca, cpt, mg] <-
-            sd(r_results_draws[pa, ca, cpt, mg, ], na.rm = TRUE)
+            stats::sd(r_results_draws[pa, ca, cpt, mg, ], na.rm = TRUE)
         }
       }
     }
@@ -407,13 +407,13 @@ create_mortality_results <- function (logit_exp_neg_m,
     m_fit <- -log(invlogit(logit_exp_neg_m))
     m_results <- m_fit * results_step
     # Standard error
-    logit_exp_neg_m_draws <- rnorm(
+    logit_exp_neg_m_draws <- stats::rnorm(
       1000,
       logit_exp_neg_m,
       logit_exp_neg_m_se
     )
     m_draws <- -log(invlogit(logit_exp_neg_m_draws))
-    m_results_se <- sd(m_draws * results_step, na.rm = TRUE)
+    m_results_se <- stats::sd(m_draws * results_step, na.rm = TRUE)
     # Rename
     names(m_fit) <- NULL
     names(m_results) <- NULL
@@ -439,6 +439,7 @@ create_mortality_results <- function (logit_exp_neg_m,
 #'
 #' @param vlogit_exp_neg_tf [numeric()] Vector estimates.
 #' @param mlogit_exp_neg_tf_cov [matrix()] Covariances.
+#' @param results_step [integer()] Results step as multiple of tag step.
 #' @param nft [integer()] Number of fishing rate time steps.
 #' @param nfa [integer()] Number of fishing rate areas.
 #' @param estimate [logical()] Estimate fishing mortality rate(s)?
@@ -466,7 +467,7 @@ create_fishing_results <- function (vlogit_exp_neg_tf,
     # Untransform
     mvtf_draws <- -log(invlogit(mvlogit_exp_neg_tf_draws))
     # Compute SE
-    vtf_results_se <- apply(mvtf_draws * results_step, 2, sd, na.rm = TRUE)
+    vtf_results_se <- apply(mvtf_draws * results_step, 2, stats::sd, na.rm = TRUE)
     tf_results_se <- matrix(vtf_results_se, nrow = nfa, ncol = nft)
     f_results_se <- t(tf_results_se)
     # Rename
@@ -520,9 +521,9 @@ create_fishing_results <- function (vlogit_exp_neg_tf,
 #'
 #' @return [list()]
 #'
-create_bias_results <- function (log_b = log_b,
-                                 log_b_cov = log_b_cov,
-                                 estimate = estimate_b) {
+create_bias_results <- function (log_b,
+                                 log_b_cov,
+                                 estimate) {
 
   if (estimate) {
     # Estimate
@@ -537,7 +538,7 @@ create_bias_results <- function (log_b = log_b,
     # Untransform
     b_draws <- exp(log_b_draws)
     # Compute SE
-    b_results_se <- apply(b_draws, 2, sd, na.rm = TRUE)
+    b_results_se <- apply(b_draws, 2, stats::sd, na.rm = TRUE)
     # Rename
     names(b_fit) <- NULL
     names(b_results) <- NULL
@@ -574,8 +575,8 @@ create_dispersion_results <- function (log_k,
     k_fit <- exp(log_k)
     k_results <- k_fit
     # Compute SE
-    log_k_draws <- rnorm(1000, log_k, log_k_se)
-    k_results_se <- sd(exp(log_k_draws), na.rm = TRUE)
+    log_k_draws <- stats::rnorm(1000, log_k, log_k_se)
+    k_results_se <- stats::sd(exp(log_k_draws), na.rm = TRUE)
     # Rename
     names(k_fit) <- NULL
     names(k_results) <- NULL

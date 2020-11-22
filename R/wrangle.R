@@ -424,7 +424,6 @@ mmmTags <- function (x,
 #' indexed. The \code{areas} argument is optional if areas are already
 #' indexed sequentially from one in \code{x}.
 #'
-#' @importFrom magrittr `%>%`
 #'
 #' @return A matrix of class \code{mmmRates}.
 #' @export
@@ -539,17 +538,14 @@ mmmRates <- function (x,
 #' release and recovery time step. The weighting is based on tag recoveries
 #' at the tag time step. Weights average to one for a given area.
 #'
-#' @param tags [mmmTMB()] See [mmmTags()].
+#' @param tags [mmmTags()] See [mmmTags()].
 #' @param step [character()] Currently implemented for \code{"month"} only.
-#' Must equal the \code{step} element in \code{tags}.
+#'   Must equal the \code{step} element in \code{tags}.
+#' @param nrows [integer()] Number of rows
 #'
 #' @return A matrix of monthly weighting for fishing mortality rates.
 #'
-#' @importFrom magrittr `%>%`
-#'
 #' @export
-#'
-#' @examples
 #'
 mmmWeights <- function (tags, step = "month", nrows = 12L) {
 

@@ -234,9 +234,6 @@ mmmLineplot <- function (x = NULL,
 #'
 #' @return [character()]
 #'
-#' @examples
-#' sensibly_round(c(0.0005, 0.0010, 0.0015), 3)
-#'
 sensibly_round <- function (x, digits) {
   y <- character(length = length(x))
   ind_low <- which(x < 10^(-digits))
