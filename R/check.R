@@ -1,74 +1,173 @@
+#' Check Tag Release Data
+#'
+#' @param x [matrix()][mmmTags()] Tag release data
+#'
+#' @return \code{NULL}
+#'
+check_x <- function (x) {
+  # Check x
+  checkmate::assert_matrix(x, mode = "integerish", any.missing = FALSE)
+  checkmate::assert_matrix(x, ncols = 4)
+  checkmate::assert_numeric(x, lower = 0, finite = TRUE)
+  checkmate::assert_choice(colnames(x)[1], c("release_step"))
+  checkmate::assert_choice(colnames(x)[2], c("release_area"))
+  checkmate::assert_choice(colnames(x)[3], c("group"))
+  checkmate::assert_choice(colnames(x)[4], c("count"))
+}
+
+#' Check Tag Recovery Data
+#'
+#' @param y [matrix()][mmmTags()] Tag recovery data
+#'
+#' @return \code{NULL}
+#'
+check_y <- function (y) {
+  # Check y
+  checkmate::assert_matrix(y, mode = "integerish", any.missing = FALSE)
+  checkmate::assert_matrix(y, ncols = 6)
+  checkmate::assert_numeric(y, lower = 0, finite = TRUE)
+  checkmate::assert_choice(colnames(y)[1], c("release_step"))
+  checkmate::assert_choice(colnames(y)[2], c("release_area"))
+  checkmate::assert_choice(colnames(y)[3], c("group"))
+  checkmate::assert_choice(colnames(y)[4], c("recover_step"))
+  checkmate::assert_choice(colnames(y)[5], c("recover_area"))
+  checkmate::assert_choice(colnames(y)[6], c("count"))
+}
+
+#' Check Index Matrix
+#'
+#' @param z [matrix()][mmmIndex()] Square binary index matrix
+#'
+#' @return \code{NULL}
+#'
+check_z <- function (z) {
+  # Check z
+  checkmate::assert_matrix(z, mode = "integerish", any.missing = FALSE)
+  checkmate::assert_numeric(z, lower = 0, upper = 1)
+}
+
+#' Check Instantaneous Tag Loss Rate
+#'
+#' @param h [numeric()] Instantaneous tag loss rate
+#'
+#' @return \code{NULL}
+#'
+check_h <- function (h) {
+  # Check h
+  checkmate::assert_numeric(h, lower = 0, len = 1, finite = TRUE)
+}
+
+#' Check Initial Tag Loss Rate (Proportion)
+#'
+#' @param u [numeric()] Initial tag loss rate (proportion)
+#'
+#' @return \code{NULL}
+#'
+check_u <- function (u) {
+  # Check u
+  checkmate::assert_numeric(u, lower = 0, upper = 1, len = 1)
+}
+
+#' Check Tag Reporting Rate Data
+#'
+#' @param z [array()] Tag reporting rate data
+#' @param null_ok [logical()] May l be \code{NULL}?
+#'
+#' @return \code{NULL}
+#'
+check_l <- function (l, null_ok = TRUE) {
+  # Check l
+  checkmate::assert_array(l, mode = "double", d = 3, null.ok = null_ok)
+  checkmate::assert_array(l, any.missing = FALSE, null.ok = null_ok)
+  checkmate::assert_numeric(l, lower = 0, upper = 1, null.ok = null_ok)
+}
+
+#' Check Fishing Mortality Rate
+#'
+#' @param f [array()] Fishing mortality rate
+#' @param null_ok [logical()] May f be \code{NULL}?
+#'
+#' @return \code{NULL}
+#'
+check_f <- function (f, null_ok = TRUE) {
+  # Check f
+  checkmate::assert_array(f, mode = "double", d = 3, null.ok = null_ok)
+  checkmate::assert_numeric(f, lower = 0, finite = TRUE, null.ok = null_ok)
+}
+
+#' Check Natural Mortality Rate
+#'
+#' @param m [numeric()] Natural mortality rate
+#' @param null_ok [logical()] May m be \code{NULL}?
+#'
+#' @return \code{NULL}
+#'
+check_m <- function (m, null_ok = TRUE) {
+  # Check m
+  checkmate::assert_numeric(m, lower = 0, len = 1, null.ok = null_ok)
+  checkmate::assert_numeric(m,  finite = TRUE, null.ok = null_ok)
+}
+
+#' Check Movement Parameters
+#'
+#' @param p [array()] Movement parameters
+#' @param null_ok [logical()] May p be \code{NULL}?
+#'
+#' @return \code{NULL}
+#'
+check_p <- function (p, null_ok = TRUE) {
+  # Check p
+  checkmate::assert_array(p, mode = "double", null.ok = null_ok)
+  checkmate::assert_array(p, d = 3L, null.ok = null_ok)
+}
+
+#' Negative Binomial Dispersioin Parameter
+#'
+#' @param k [numeric()] Negative Binomial Dispersion. The variance is given
+#'   by var = mu + mu / k (NB1) or var = mu + mu^2 / k (NB2).
+#' @param null_ok [logical()] May k be \code{NULL}?
+#'
+#' @return \code{NULL}
+#'
+check_k <- function (k, null_ok = TRUE) {
+  # Check k
+  checkmate::assert_numeric(k, lower = 0, len = 1, null.ok = null_ok)
+  checkmate::assert_numeric(k,  finite = TRUE, null.ok = null_ok)
+}
+
+
+
 #' Check Data Argument for mmmFit()
 #'
 #' @param data [list()]
+#' @param exclude [character()] vector of element names in \code{data}
+#'   to exclude from check.
 #'
-#' @return NULL
+#' @return \code{NULL}
 #'
-check_data <- function (data = NULL) {
+check_data <- function (data = NULL, exclude = NULL) {
 
   # Check data -----------------------------------------------------------------
 
   checkmate::assert_list(data)
 
-  # Check x --------------------------------------------------------------------
+  # Check required elements ----------------------------------------------------
 
-  checkmate::assert_matrix(data$x, mode = "integerish", any.missing = FALSE)
-  checkmate::assert_matrix(data$x, ncols = 4)
-  checkmate::assert_numeric(data$x, lower = 0, finite = TRUE)
-  checkmate::assert_choice(colnames(data$x)[1], c("release_step"))
-  checkmate::assert_choice(colnames(data$x)[2], c("release_area"))
-  checkmate::assert_choice(colnames(data$x)[3], c("group"))
-  checkmate::assert_choice(colnames(data$x)[4], c("count"))
+  if (!is.element("x", exclude)) check_x(data$x)
+  if (!is.element("y", exclude)) check_y(data$y)
+  if (!is.element("z", exclude)) check_z(data$z)
+  if (!is.element("h", exclude)) check_h(data$h)
+  if (!is.element("u", exclude)) check_u(data$u)
 
-  # Check y --------------------------------------------------------------------
+  # Check optional elements ----------------------------------------------------
 
-  checkmate::assert_matrix(data$y, mode = "integerish", any.missing = FALSE)
-  checkmate::assert_matrix(data$y, ncols = 6)
-  checkmate::assert_numeric(data$y, lower = 0, finite = TRUE)
-  checkmate::assert_choice(colnames(data$y)[1], c("release_step"))
-  checkmate::assert_choice(colnames(data$y)[2], c("release_area"))
-  checkmate::assert_choice(colnames(data$y)[3], c("group"))
-  checkmate::assert_choice(colnames(data$y)[4], c("recover_step"))
-  checkmate::assert_choice(colnames(data$y)[5], c("recover_area"))
-  checkmate::assert_choice(colnames(data$y)[6], c("count"))
-
-  # Check z --------------------------------------------------------------------
-
-  checkmate::assert_matrix(data$z, mode = "integerish", any.missing = FALSE)
-  checkmate::assert_numeric(data$z, lower = 0, upper = 1)
-
-  # Check l --------------------------------------------------------------------
-
-  checkmate::assert_array(data$l, mode = "double", d = 3, null.ok = TRUE)
-  checkmate::assert_array(data$l, any.missing = FALSE, null.ok = TRUE)
-  checkmate::assert_numeric(data$l, lower = 0, upper = 1, null.ok = TRUE)
-
-  # Check w --------------------------------------------------------------------
-
-  checkmate::assert_array(data$w, mode = "double", d = 3, null.ok = TRUE)
-  checkmate::assert_array(data$w, any.missing = FALSE, null.ok = TRUE)
-  checkmate::assert_numeric(data$w, lower = 0, upper = 12, null.ok = TRUE)
-
-  # Check f --------------------------------------------------------------------
-
-  checkmate::assert_array(data$f, mode = "double", d = 3, null.ok = TRUE)
-  checkmate::assert_numeric(data$f, lower = 0, finite = TRUE, null.ok = TRUE)
-
-  # Check m --------------------------------------------------------------------
-
-  checkmate::assert_numeric(data$m, lower = 0, len = 1, null.ok = TRUE)
-  checkmate::assert_numeric(data$m,  finite = TRUE, null.ok = TRUE)
-
-  # Check h --------------------------------------------------------------------
-
-  checkmate::assert_numeric(data$h, lower = 0, len = 1, finite = TRUE)
-
-  # Check u --------------------------------------------------------------------
-
-  checkmate::assert_numeric(data$u, lower = 0, upper = 1, len = 1)
+  if (!is.element("l", exclude)) check_l(data$l)
+  if (!is.element("f", exclude)) check_f(data$f)
+  if (!is.element("m", exclude)) check_m(data$m)
 
   # Define index limits --------------------------------------------------------
 
+  # TODO: Continue from here
   nt <- max(c(data$x[, "release_step"], data$y[, "recover_step"])) + 1L
   na <- max(c(data$x[, "release_area"], data$y[, "recover_area"])) + 1L
   ng <- max(c(data$x[, "group"], data$y[, "group"])) + 1L # Indexed from zero
@@ -107,48 +206,33 @@ check_data <- function (data = NULL) {
 #' Check Parameters Argument for mmmFit()
 #'
 #' @param parameters [list()]
+#' @param exclude [character()] vector of element names in \code{parameters}
+#'   to exclude from check.
 #'
-#' @return NULL
+#' @return \code{NULL}
 #'
-check_parameters <- function (parameters) {
+check_parameters <- function (parameters, exclude = NULL) {
 
   # Check parameters -----------------------------------------------------------
 
   checkmate::assert_list(parameters, null.ok = TRUE)
 
-  # Check p --------------------------------------------------------------------
+  # Check required elements ----------------------------------------------------
 
-  checkmate::assert_array(parameters$p, mode = "double", null.ok = TRUE)
-  checkmate::assert_array(parameters$p, d = 3L, null.ok = TRUE)
+  if (!is.element("p", exclude)) check_p(parameters$p)
 
-  # Check f --------------------------------------------------------------------
+  # Check optional elements ----------------------------------------------------
 
-  checkmate::assert_array(parameters$f, mode = "double", d = 3, null.ok = TRUE)
-  checkmate::assert_numeric(parameters$f, lower = 0, null.ok = TRUE)
-  checkmate::assert_numeric(parameters$f, finite = TRUE, null.ok = TRUE)
-
-  # Check m --------------------------------------------------------------------
-
-  checkmate::assert_numeric(parameters$m, lower = 0, len = 1, null.ok = TRUE)
-  checkmate::assert_numeric(parameters$m,  finite = TRUE, null.ok = TRUE)
-
-  # Check b --------------------------------------------------------------------
-
-  checkmate::assert_numeric(parameters$b, lower = 0, null.ok = TRUE)
-  checkmate::assert_numeric(parameters$b, finite = TRUE, null.ok = TRUE)
-
-  # Check k --------------------------------------------------------------------
-
-  checkmate::assert_numeric(parameters$k, lower = 0, len = 1, null.ok = TRUE)
-  checkmate::assert_numeric(parameters$k,  finite = TRUE, null.ok = TRUE)
-
+  if (!is.element("f", exclude)) check_f(parameters$f)
+  if (!is.element("m", exclude)) check_m(parameters$m)
+  if (!is.element("k", exclude)) check_k(parameters$k)
 }
 
 #' Check Settings Argument for mmmFit()
 #'
 #' @param settings [list()]
 #'
-#' @return NULL
+#' @return \code{NULL}
 #'
 check_settings <- function (settings) {
 
