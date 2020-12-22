@@ -91,8 +91,8 @@ mmmFit <- function (data,
 
   # Assign optional data -------------------------------------------------------
 
-  if (!is.null(data$l)) l <- data$l else l <- matrix(1, nrow = 1L, ncol = 1L)
-  if (!is.null(data$w)) w <- data$w else w <- matrix(1, nrow = 1L, ncol = 1L)
+  if (!is.null(data$l)) l <- data$l else l <- array(1, dim = rep(1, 3))
+  if (!is.null(data$w)) w <- data$w else w <- array(1, dim = rep(1, 3))
 
   # Assign data / parameters ---------------------------------------------------
 
@@ -128,48 +128,35 @@ mmmFit <- function (data,
 
   # Create tag reporting rate indexes ------------------------------------------
 
-  nlt <- nrow(l)
-  nla <- ncol(l)
-  vlt <- rep(c(seq_len(nlt) - 1L), ceiling(nt / nlt))[seq_len(nt)]
-  vla <- rep(c(seq_len(nla) - 1L), ceiling(na / nla))[seq_len(na)]
+  nlt <- dim(l)[1]
+  nla <- dim(l)[2]
+  nlg <- dim(l)[3]
+  vlt <- create_index_vector(nlt, nt)
+  vla <- create_index_vector(nla, na)
+  vlg <- create_index_vector(nlg, ng)
 
   # Create fishing rate weighting indexes --------------------------------------
 
-  nwt <- nrow(w)
-  nwa <- ncol(w)
-  vwt <- rep(c(seq_len(nwt) - 1L), ceiling(nt / nwt))[seq_len(nt)]
-  vwa <- rep(c(seq_len(nwa) - 1L), ceiling(na / nwa))[seq_len(na)]
+  nwt <- dim(w)[1]
+  nwa <- dim(w)[2]
+  nwg <- dim(w)[3]
+  vwt <- create_index_vector(nwt, nt)
+  vwa <- create_index_vector(nwa, na)
+  vwg <- create_index_vector(nwg, ng)
 
   # Create fishing rate indexes ------------------------------------------------
 
-  if (!is.null(f)) nft <- nrow(f) else nft <- 1L
-  if (!is.null(f)) nfa <- ncol(f) else nfa <- 1L
-  vft <- rep(seq_len(nft) - 1L, each = ceiling(nt / nft))[seq_len(nt)]
-  vfa <- rep(seq_len(nfa) - 1L, each = ceiling(na / nfa))[seq_len(na)]
-  if (nt %% nft) cat("caution: nft does not divide nt evenly\n")
-  if (!is.element(nfa, c(1, na))) stop("nfa must equal 1 or na\n")
+  if (!is.null(f)) nft <- dim(f)[1] else nft <- 1L
+  if (!is.null(f)) nfa <- dim(f)[2] else nfa <- 1L
+  if (!is.null(f)) nfg <- dim(f)[3] else nfg <- 1L
+  vft <- create_index_vector(nft, nt)
+  vfa <- create_index_vector(nfa, na)
+  vfg <- create_index_vector(nfg, ng)
 
   # Create movement parameter indexes ------------------------------------------
 
-  if (time_varying) {
-    if (!block_length && !cycle_length) {
-      npt <- nt
-      vpt <- c(seq_len(nt) - 1L) # Index from zero for TMB
-    } else if (block_length && !cycle_length) {
-      npt <- ceiling(nt / block_length)
-      vpt <- rep(seq_len(npt) - 1L, each = block_length)[seq_len(nt)]
-    } else if (cycle_length && !block_length) {
-      npt <- cycle_length
-      vpt <- rep(seq_len(npt) - 1L, ceiling(nt / npt))[seq_len(nt)]
-    } else {
-      npt <- cycle_length
-      vpt_cycle <- rep(seq_len(npt) - 1L, ceiling(nt / npt))[seq_len(nt)]
-      vpt <- rep(vpt_cycle, each = block_length)[seq_len(nt)]
-    }
-  } else {
-    npt <- 1L
-    vpt <- rep(0L, nt) # Index from zero for TMB
-  }
+  if (!is.null(p)) npt <- dim(p)[1] else npt <- 1L
+  vpt <- create_index_vector(npt, nt)
 
   # Estimate parameter? --------------------------------------------------------
 
@@ -182,7 +169,7 @@ mmmFit <- function (data,
   # Assign default initial parameter values ------------------------------------
 
   if (is.null(p)) p <- array(0, dim = c(npt, np, ng)) # Movement parameters
-  if (is.null(f)) f <- array(0.10, dim = c(nft, nfa)) # Fishing rates
+  if (is.null(f)) f <- array(0.05, dim = c(nft, nfa, nfg)) # Fishing rates
   if (is.null(m)) m <- 0.10 # Natural mortality rate
   if (is.null(b)) b <- rep(1, ng) # Fishing bias
   if (is.null(k)) k <- 1L # Negative binomial dispersion parameter
@@ -190,8 +177,8 @@ mmmFit <- function (data,
   # Confirm parameter dimensions -----------------------------------------------
 
   if (!all(dim(p) == c(npt, np, ng))) stop("dim(p) must equal c(npt, np, ng)\n")
-  if (!(ncol(f) == 1 || ncol(f) == na)) stop("ncol(f) must equal one or na\n")
-  if (nrow(f) < 1) stop("nrow(f) must be greater than zero\n")
+  # if (!(ncol(f) == 1 || ncol(f) == na)) stop("ncol(f) must equal one or na\n")
+  if (dim(f)[1] < 1) stop("dim(f)[1] must be greater than zero\n")
   if (length(m) != 1) stop("length(m) must be one")
   if (length(b) != ng) stop("length(b) must equal ng\n")
   if (length(k) != 1) stop("length(k) must be one")
@@ -203,8 +190,8 @@ mmmFit <- function (data,
     tx = t(x), # Tag release matrix
     ty = t(y), # Tag recovery matrix
     tz = t(z), # Movement index matrix
-    tl = t(l), # Tag reporting rate matrix
-    tw = t(w), # Fish rate weighting if tag step finer than fish rate step
+    tl = aperm(l, c(2,1,3)), # Tag reporting rate array
+    tw = aperm(w, c(2,1,3)), # Fish rate weighting if tag step finer than fish rate step
     h = h,     # instantaneous tag loss rate
     d = (1L - u), # Proportion of tags still attached following release
     error_family = error_family,
@@ -220,29 +207,36 @@ mmmFit <- function (data,
     npt = npt, # Secondary index limits: number of parameter time steps
     nft = nft, # Secondary index limits: number of fishing rate time steps
     nfa = nfa, # Secondary index limits: number of fishing rate areas
+    nfg = nfg,
     nlt = nlt, # Secondary index limits: number of reporting rate time steps
     nla = nla, # Secondary index limits: number of reporting rate areas
+    nlg = nlg,
     nwt = nwt, # Secondary index limits: number of fish rate weighting steps
     nwa = nwa, # Secondary index limits: number of fish rate weighting areas
+    nwg = nwg,
     # Index vectors
     vpt = vpt, # Index vector: time step for movement parameters
     vft = vft, # Index vector: time step for fishing rate
     vfa = vfa, # Index vector: area for fishing rate
+    vfg = vfg,
     vlt = vlt, # Index vector: time step for tag reporting rate
     vla = vla, # Index vector: area for tag reporting rate
+    vlg = vlg,
     vwt = vwt, # Index vector: time step for fishing rate weighting
-    vwa = vwa  # Index vector: area for fishing rate weighting
+    vwa = vwa,  # Index vector: area for fishing rate weighting
+    vwg = vwg
   )
 
   # Create tmb parameters ------------------------------------------------------
 
   cat("creating tmb_parameters \n")
   tmb_parameters <- list(
-    tp = aperm(p, c(2,1,3)), # Movement parameters
-    logit_exp_neg_tf = logit(exp(-(t(f)))), # Fishing mortality
+    tp = aperm(p, c(2, 1, 3)), # Movement parameters
+    logit_exp_neg_tf = logit(exp(-(aperm(f, c(2, 1, 3))))), # Fishing mortality
     logit_exp_neg_m = logit(exp(-(m))), # Natural mortality
     log_b = log(b), # Fishing bias
     log_k = log(k) # Negative binomial dispersion
+    # log_f_sd = log(1) # TODO: Temp support for RE testing
   )
 
   # Create tmb map -------------------------------------------------------------
@@ -250,15 +244,19 @@ mmmFit <- function (data,
   cat("creating tmb_map \n")
   tmb_map <- list()
   # Default
-  if (!is.null(data$f)) tmb_map$logit_exp_neg_tf <- factor(rep(NA, nfa * nft))
+  if (!is.null(data$f)) tmb_map$logit_exp_neg_tf <- factor(rep(NA, nfa * nft * nfg))
   if (!is.null(data$m)) tmb_map$logit_exp_neg_m <- as.factor(NA)
   if (!estimate_b) tmb_map$log_b <- as.factor(rep(NA, ng))
   if (error_family == 0) tmb_map$log_k <- as.factor(NA)
   # User defined
   if (!is.null(map$p)) tmb_map$tp <- aperm(map$p, c(2, 1, 3))
-  if (!is.null(map$f)) tmb_map$logit_exp_neg_tf <- t(map$f)
+  if (!is.null(map$f)) tmb_map$logit_exp_neg_tf <- aperm(map$f, c(2, 1, 3))
   if (!is.null(map$m)) tmb_map$logit_exp_neg_m <- map$m
   if (!is.null(map$b)) tmb_map$log_b <- map$b
+
+  # Create tmb random ----------------------------------------------------------
+
+  # tmb_random <- c("logit_exp_neg_tf") # TODO: Temp support for RE testing
 
   # Set OpenMP cores -----------------------------------------------------------
 
