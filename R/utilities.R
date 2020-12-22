@@ -45,6 +45,43 @@ invlogit <- function (y) {
   return(ans)
 }
 
+#' Create Index Vector
+#'
+#' @param a [integer()] Length of object to index
+#' @param b [integer()] Length of index vector
+#' @param from [integer()] Value from which to index
+#'
+#' @return An [integer()] vector
+#' @export
+#'
+#' @examples
+#' # a == 1
+#' create_index_vector(1, 3) # Repeated
+#'
+#' # a == b
+#' create_index_vector(3, 3) # Sequence
+#'
+#' # a < b
+#' create_index_vector(2, 3) # Truncated sequence of repeated values
+#' create_index_vector(2, 4) # Sequence of repeated values
+#' create_index_vector(5, 9) # Truncated sequence of repeated values
+#'
+#' # a > b
+#' create_index_vector(5, 3) # Truncated sequence
+#'
+create_index_vector <- function (a, b, from = 0) {
+  # Check arguments
+  checkmate::assert_integerish(a, lower = 0, len = 1, any.missing = FALSE)
+  checkmate::assert_integerish(b, lower = 0, len = 1, any.missing = FALSE)
+  checkmate::assert_integerish(from, lower = 0, len = 1, any.missing = FALSE)
+  # Compute index vector
+  vec <- rep(c(seq_len(a) - 1L), each = ceiling(b / a))[seq_len(b)]
+  vec <- as.integer(vec + from)
+  # Return
+  return(vec)
+}
+
+
 #' Create Movement Rate Array
 #'
 #' @param p [array()] Movement parameters.
@@ -455,8 +492,8 @@ create_fishing_results <- function (vlogit_exp_neg_tf,
   if (estimate) {
     # Estimate
     vtf_fit <- -log(invlogit(vlogit_exp_neg_tf))
-    tf_fit <- matrix(vtf_fit, nrow = nfa, ncol = nft)
-    f_fit <- t(tf_fit)
+    tf_fit <- array(vtf_fit, dim = c(nfa, nft, nfg))
+    f_fit <- aperm(tf_fit, c(2, 1, 3))
     f_results <- f_fit * results_step
     # Standard error
     mvlogit_exp_neg_tf_draws <- MASS::mvrnorm(
@@ -468,27 +505,30 @@ create_fishing_results <- function (vlogit_exp_neg_tf,
     mvtf_draws <- -log(invlogit(mvlogit_exp_neg_tf_draws))
     # Compute SE
     vtf_results_se <- apply(mvtf_draws * results_step, 2, stats::sd, na.rm = TRUE)
-    tf_results_se <- matrix(vtf_results_se, nrow = nfa, ncol = nft)
-    f_results_se <- t(tf_results_se)
+    tf_results_se <- array(vtf_results_se, dim = c(nfa, nft, nfg))
+    f_results_se <- aperm(tf_results_se, c(2, 1, 3))
     # Rename
     names(f_fit) <- NULL
     names(f_results) <- NULL
     names(f_results_se) <- NULL
     # Initialize
-    fishing_rate <- matrix(0, nrow = prod(dim(f_results)), ncol = 4L)
+    fishing_rate <- matrix(0, nrow = prod(dim(f_results)), ncol = 5L)
     row_ind <- 1L
     # Populate
-    for (cfa in seq_len(nfa)) {
-      for (cft in seq_len(nft)) {
-        fishing_rate[row_ind, 1] <- cfa
-        fishing_rate[row_ind, 2] <- cft
-        fishing_rate[row_ind, 3] <- f_results[cft, cfa]
-        fishing_rate[row_ind, 4] <- f_results_se[cft, cfa]
-        row_ind <- row_ind + 1L
+    for (cfg in seq_len(nfg)) {
+      for (cfa in seq_len(nfa)) {
+        for (cft in seq_len(nft)) {
+          fishing_rate[row_ind, 1] <- cfa
+          fishing_rate[row_ind, 2] <- cft
+          fishing_rate[row_ind, 3] <- cfg
+          fishing_rate[row_ind, 4] <- f_results[cft, cfa, cfg]
+          fishing_rate[row_ind, 5] <- f_results_se[cft, cfa, cfg]
+          row_ind <- row_ind + 1L
+        }
       }
     }
     # Set column names
-    dim_names <- c("Fish_area", "Fish_Step")
+    dim_names <- c("Fish_Area", "Fish_Step", "Fish_Group")
     res_names <- c("Estimate", "SE")
     colnames(fishing_rate) <- c(dim_names, res_names)
     # Convert to data frame
