@@ -72,14 +72,10 @@ Type objective_function<Type>::operator() ()
   DATA_IMATRIX(ty); // Tag recover integer matrix (transpose)
   DATA_IMATRIX(tz); // Area index integer matrix (transpose)
   DATA_ARRAY(tl); // Tag reporting rate matrix (transpose)
-  DATA_ARRAY(tw); // Fishing mortality rate weights matrix (transpose)
   DATA_SCALAR(h); // Instantaneous tag loss rate
   DATA_SCALAR(d); // Tags attached after release (proportion)
   // Settings
   DATA_INTEGER(error_family); // Error family
-  DATA_INTEGER(time_varying); // Time varying?
-  DATA_INTEGER(time_process); // None or random walk
-  DATA_INTEGER(min_liberty); // Min steps at liberty
   DATA_INTEGER(max_liberty); // Max steps at liberty
   // Index limits
   DATA_INTEGER(np); // Number of movement parameters per step and group
@@ -93,9 +89,6 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(nlt); // Number of tag reporting rate time steps
   DATA_INTEGER(nla); // Number of tag reporting rate areas
   DATA_INTEGER(nlg); // Number of tag reporting rate areas
-  DATA_INTEGER(nwt); // Number of fishing rate weight time steps
-  DATA_INTEGER(nwa); // Number of fishing rate weight areas
-  DATA_INTEGER(nwg); // Number of fishing rate weight areas
   // Index vectors
   DATA_IVECTOR(vpt); // Time step for movement parameters
   DATA_IVECTOR(vft); // Time step for fishing rate
@@ -104,16 +97,12 @@ Type objective_function<Type>::operator() ()
   DATA_IVECTOR(vlt); // Time step for tag reporting rate
   DATA_IVECTOR(vla); // Area for tag reporting rate
   DATA_IVECTOR(vlg); // Area for tag reporting rate
-  DATA_IVECTOR(vwt); // Time step for fishing rate weight
-  DATA_IVECTOR(vwa); // Area for fishing rate weight
-  DATA_IVECTOR(vwg); // Area for fishing rate weight
 
   // Parameters ----------------------------------------------------------------
 
   PARAMETER_ARRAY(tp); // Movement parameters dim = c(np, npt, ng)
   PARAMETER_ARRAY(logit_exp_neg_tf); // Fishing mortality rate
   PARAMETER(logit_exp_neg_m); // Natural mortality
-  PARAMETER_VECTOR(log_b); // Fishing mortality bias
   PARAMETER(log_k); // Negative binomial dispersion
   // PARAMETER(log_f_sd);
 
@@ -121,20 +110,17 @@ Type objective_function<Type>::operator() ()
 
   parallel_accumulator<Type> jnll(this);
   // Type jnll = 0;
-  // Type re_nll = 0;
 
   // Instantiate arrays --------------------------------------------------------
 
   // Matrices and arrays use column-major indexing in TMB (first index fastest)
-  array<Type> Y(na, nt, ng, na, nt); // Tag recoveries
-  array<Type> N(na, nt, ng, na, nt); // Tag abundance
+  array<Type> Y(na, max_liberty, ng, na, nt); // Tag recoveries
+  array<Type> N(na, max_liberty, ng, na, nt); // Tag abundance
   array<Type> R(na, na, npt, ng); // Movement rates
   array<Type> S(na, nt, ng); // Survival rates
-  array<Type> Yhat(na, nt, ng, na, nt); // Tag recoveries (predicted)
+  array<Type> Yhat(na, max_liberty, ng, na, nt); // Tag recoveries (predicted)
   array<Type> tF(nfa, nft, nfg); // Fishing mortality rates
   array<Type> tL(nla, nlt, nlg); // Tag reporting rates
-  array<Type> tW(nwa, nwt, nwg); // Fishing mortality weights
-  vector<Type> b(ng); // Fishing mortality bias
 
   // Initialize arrays ---------------------------------------------------------
 
@@ -144,7 +130,6 @@ Type objective_function<Type>::operator() ()
   S.setZero(); // Initialize to zero
   Yhat.setZero(); // Initialize to zero
   tL = tl;
-  tW = tw;
 
   // Inverse transform parameters ----------------------------------------------
 
@@ -154,11 +139,10 @@ Type objective_function<Type>::operator() ()
       for (int ca = 0; ca < na; ca++) {
         tF(vfa(ca), vft(ct), vfg(mg)) =
           -log(invlogit(logit_exp_neg_tf(vfa(ca), vft(ct), vfg(mg))));
+          // TODO incorp F_dev in here at parameter level
       }
     }
   }
-  // Fishing mortality bias
-  b = exp(log_b);
   // Natural mortality
   Type M = -log(invlogit(logit_exp_neg_m));
   // Fishing mortality bias standard deviation
@@ -172,13 +156,13 @@ Type objective_function<Type>::operator() ()
   // Populate tag abundances with releases -------------------------------------
 
   for (int i = 0; i < txcols; i++) {
-    N(tx(1, i), tx(0, i), tx(2, i), tx(1, i), tx(0, i)) = d * tx(3, i);
+    N(tx(1, i), 0, tx(2, i), tx(1, i), tx(0, i)) = d * tx(3, i);
   }
 
   // Populate tag recoveries ---------------------------------------------------
 
   for (int i = 0; i < tycols; i++) {
-    Y(ty(4, i), ty(3, i), ty(2, i), ty(1, i), ty(0, i)) = ty(5, i);
+    Y(ty(4, i), ty(3, i) - ty(0, i), ty(2, i), ty(1, i), ty(0, i)) = ty(5, i);
   }
 
   // Populate movement rates ---------------------------------------------------
@@ -203,64 +187,65 @@ Type objective_function<Type>::operator() ()
   for (int mg = 0; mg < ng; mg++) {
     for (int ct = 0; ct < nt; ct++) {
       for (int ca = 0; ca < na; ca++) {
-        S(ca, ct, mg) = exp(-b(mg) * tF(vfa(ca), vft(ct), vfg(mg)) *
-          tW(vwa(ca), vwt(ct), vwg(mg)) - M - h);
+        S(ca, ct, mg) = exp(-tF(vfa(ca), vft(ct), vfg(mg)) - M - h);
       }
     }
   }
 
   // -------------- Predict recoveries -----------------------------------------
 
-  // Initialize rt_max
-  int rt_max = nt;
-  // Populate mu
+  // Uses ct = mt + dt
+  // ct: current time step
+  // mt: release time step
+  // dt: time step difference
+  // Initialize dt_max
+  Type dt_max = Type(0);
   for (int mt = 0; mt < nt; mt++) {
     for (int ma = 0; ma < na; ma++) {
       for (int mg = 0; mg < ng; mg++) {
         // Were tags released in this stratum?
-        if (N(ma, mt, mg, ma, mt) > 0) {
+        if (N(ma, 0, mg, ma, mt) > 0) {
+          // Define dt_max
+          dt_max = max_liberty;
+          if (mt + dt_max > nt) dt_max = nt - mt;
           // Project the abundance array forward
-          for (int ct = (mt + 1); ct < nt; ct++) {
+          for (int dt = 1; dt < dt_max; dt++) {
             for (int ca = 0; ca < na; ca++) {
               for (int pa = 0; pa < na; pa++) {
-                N(ca, ct, mg, ma, mt) += N(pa, ct - 1, mg, ma, mt) *
-                  S(pa, ct - 1, mg) * R(pa, ca, vpt(ct), mg);
+                N(ca, dt, mg, ma, mt) += N(pa, dt - 1, mg, ma, mt) *
+                  S(pa, mt + dt - 1, mg) * R(pa, ca, vpt(mt + dt), mg);
               }
             }
           }
-          // Compute rt_max from max_liberty
-          rt_max = mt + max_liberty + 1;
-          if (rt_max > nt) { rt_max = nt; }
           // Compute predicted recoveries and jnll
-          for (int rt = (mt + min_liberty); rt < rt_max; rt++) {
+          for (int dt = 1; dt < dt_max; dt++) {
             for (int ra = 0; ra < na; ra++) {
               // Populate the predicted recovery array
-              Yhat(ra, rt, mg, ma, mt) = N(ra, rt, mg, ma, mt) *
-                (Type(1) - exp(-b(mg) * tF(vfa(ra), vft(rt), vfg(mg)) *
-                tW(vwa(ra), vwt(rt), vwg(mg)))) *
-                tL(vla(ra), vlt(rt), vlg(mg));
+              Yhat(ra, dt, mg, ma, mt) = N(ra, dt, mg, ma, mt) *
+                (Type(1) - exp(-tF(vfa(ra), vft(mt + dt), vfg(mg)))) *
+                tL(vla(ra), vlt(mt + dt), vlg(mg));
               // Shelter error distribution from mean zero
-              if (Yhat(ra, rt, mg, ma, mt) > 0) {
+              if (Yhat(ra, dt, mg, ma, mt) > 0) {
                 // Calculate the joint negative log likelihood
                 switch (error_family) {
                 case poisson_family:
                   jnll -= dpois(
-                    Y(ra, rt, mg, ma, mt),
-                    Yhat(ra, rt, mg, ma, mt),
+                    Y(ra, dt, mg, ma, mt),
+                    Yhat(ra, dt, mg, ma, mt),
                     true);
                   break;
                 case nbinom1_family:
                   jnll -= dnbinom_robust(
-                    Y(ra, rt, mg, ma, mt),
-                    log(Yhat(ra, rt, mg, ma, mt)),
-                    log(Yhat(ra, rt, mg, ma, mt)) - log_k,
+                    Y(ra, dt, mg, ma, mt),
+                    log(Yhat(ra, dt, mg, ma, mt)),
+                    log(Yhat(ra, dt, mg, ma, mt)) - log_k,
                     true);
                   break;
                 case nbinom2_family:
                   jnll -= dnbinom_robust(
-                    Y(ra, rt, mg, ma, mt),
-                    log(Yhat(ra, rt, mg, ma, mt)),
-                    log(Yhat(ra, rt, mg, ma, mt)) * Type(2) - log_k,
+                    Y(ra, dt, mg, ma, mt),
+                    log(Yhat(ra, dt, mg, ma, mt)),
+                    log(Yhat(ra, dt, mg, ma, mt)) * Type(2) - log_k,
                     true);
                   break;
                 default:
