@@ -1,0 +1,228 @@
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5, 
+  fig.fullwidth = TRUE
+)
+```
+
+```{r setup}
+library(mmmTMB)
+```
+
+# Load Data
+```{r load-data}
+# Use observational data
+load("~/github/sablefishData/data/sable_released.rda")
+load("~/github/sablefishData/data/sable_recovered.rda")
+load("~/github/sablefishData/data/sable_capture_rate_region.rda")
+load("~/github/sablefishData/data/sable_capture_rate_area.rda")
+load("~/github/sablefishData/data/sable_report_ratio.rda")
+
+```
+
+# Monthly Fit: 3 areas, 1 Group, Mean F
+```{r 03a-01g-mean-f}
+# Create tags object
+cols <- list(
+  release_date = "Release_Date",
+  release_area = "Release_Region",
+  recover_date = "Recovery_Date",
+  recover_area = "Recovery_Region",
+  id = "Tag_ID"
+)
+tags <- mmmTags(x = sable_released,
+                y = sable_recovered,
+                cols = cols,
+                step = "month",
+                limits = c("1979-01-01", "2018-12-31"))
+x <- tags$x
+y <- tags$y
+
+# Prepare tag reporting rates
+l_long <- dplyr::distinct(sable_report_ratio, Year, Region, Report_Ratio)
+cols <- list(date = "Year", area = "Region", rate = "Report_Ratio")
+reps <- 12 # Update to 12 for monthly fit
+lims <- c(1979, 2018)
+l <- mmmRates(l_long, cols, reps, lims, inst = FALSE)
+# TODO: Update mmmRates
+l <- array(l, dim = c(nrow(l), ncol(l), 1))
+
+# l <- array(c(0.4, 0.7, 0.3), dim = c(1, 3, 1))
+
+# Create movement index
+z <- mmmIndex(3, pattern = 1)
+
+# Define remaining data
+m <- 0.1 / 12 # Divide by 12 for monthly
+h <- 0.02 / 12 # Divide by 12 for monthly
+u <- 0.1
+
+# Populate data list
+data_list <- list(
+  x = x,
+  y = y,
+  z = z,
+  l = l,
+  # w = w,
+  # f = f,
+  m = m,
+  h = h,
+  u = u
+)
+
+# Optionally specify initial parameter values
+parameters_list <- list(
+  f = array(0.05, dim = c(1, 3, 1))
+)
+
+# Define settings
+settings_list <- mmmSet(
+  error_family = 1,
+  results_step = 12,
+  max_liberty  = 60, # 480,
+  nlminb_loops = 5,
+  newton_iters = 5,
+  openmp_cores = 6)
+
+# Assign for manual fitting
+data <- data_list
+parameters <- parameters_list
+map <- NULL
+settings <- settings_list
+control <- mmmControl(trace = 5)
+
+# Fit
+fit <- mmmFit(
+  data = data_list,
+  parameters = parameters_list,
+  map = NULL,
+  settings = settings_list,
+  control = mmmControl(trace = 5)
+)
+
+# Show movement results
+fit$results
+fit$parameters
+
+
+# max_liberty = 480
+# mmmFit: 90.72 sec elapsed
+# $fishing_rate
+#   Fish_Area Fish_Step Fish_Group   Estimate           SE
+# 1         1         1          1 0.04533019 0.0006514415
+# 2         2         1          1 0.07385162 0.0011580135
+# 3         3         1          1 0.12143294 0.0044614438 # Why so high?
+
+
+# max_liberty = 60
+# mmmFit: 26.041 sec elapsed
+# $fishing_rate
+#   Fish_Area Fish_Step Fish_Group   Estimate          SE
+# 1         1         1          1 0.06904567 0.001430071
+# 2         2         1          1 0.07996691 0.001589580
+# 3         3         1          1 0.17469867 0.009002289
+
+```
+
+
+# Monthly Fit: 3 areas, 3 Group, Mean F
+```{r 03a-03g-mean-f}
+# Create tags object
+cols <- list(
+  release_date = "Release_Date",
+  release_area = "Release_Region",
+  recover_date = "Recovery_Date",
+  recover_area = "Recovery_Region",
+  group = "Release_Size",
+  id = "Tag_ID"
+)
+tags <- mmmTags(x = sable_released,
+                y = sable_recovered,
+                cols = cols,
+                groups = list(
+                  Small = 400:549, 
+                  Medium = 550:649, 
+                  Large = 650:799),
+                step = "month",
+                limits = c("1979-01-01", "2018-12-31"))
+x <- tags$x
+y <- tags$y
+
+# Prepare tag reporting rates
+l_long <- dplyr::distinct(sable_report_ratio, Year, Region, Report_Ratio)
+cols <- list(date = "Year", area = "Region", rate = "Report_Ratio")
+reps <- 12 # Update to 12 for monthly fit
+lims <- c(1979, 2018)
+l <- mmmRates(l_long, cols, reps, lims, inst = FALSE)
+# TODO: Update mmmRates
+l <- array(l, dim = c(nrow(l), ncol(l), 1))
+
+# l <- array(c(0.4, 0.7, 0.3), dim = c(1, 3, 1))
+
+# Create movement index
+z <- mmmIndex(3, pattern = 1)
+
+# Define remaining data
+m <- 0.1 / 12 # Divide by 12 for monthly
+h <- 0.02 / 12 # Divide by 12 for monthly
+u <- 0.1
+
+# Populate data list
+data_list <- list(
+  x = x,
+  y = y,
+  z = z,
+  l = l,
+  # w = w,
+  # f = f,
+  m = m,
+  h = h,
+  u = u
+)
+
+# Optionally specify initial parameter values
+parameters_list <- list(
+  f = array(0.05, dim = c(1, 3, 1))
+)
+
+# Define settings
+settings_list <- mmmSet(
+  error_family = 1,
+  results_step = 12,
+  max_liberty  = 480,
+  nlminb_loops = 5,
+  newton_iters = 5,
+  openmp_cores = 6)
+
+# Assign for manual fitting
+data <- data_list
+parameters <- parameters_list
+map <- NULL
+settings <- settings_list
+control <- mmmControl(trace = 5)
+
+# Fit
+fit <- mmmFit(
+  data = data_list,
+  parameters = parameters_list,
+  map = NULL,
+  settings = settings_list,
+  control = mmmControl(trace = 5)
+)
+
+# Show movement results
+fit$results
+fit$parameters
+
+# $fishing_rate
+#   Fish_Area Fish_Step Fish_Group   Estimate           SE
+# 1         1         1          1 0.04533019 0.0006514415
+# 2         2         1          1 0.07385162 0.0011580135
+# 3         3         1          1 0.12143294 0.0044614438 # Why so high?
+
+```
+
+
