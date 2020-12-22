@@ -3,7 +3,7 @@
 // Methods called by the model -------------------------------------------------
 
 template <class Type>
-array<Type> create_rates(array<Type> tp, matrix<int> tz) {
+array<Type> create_movement_rates(array<Type> tp, matrix<int> tz) {
   // Initialize values
   int na = tz.rows(); // Matrix tz has rows = na, and cols = na
   int npt = tp.dim(1); // Array tp has dim = c(np, npt, ng)
@@ -71,8 +71,8 @@ Type objective_function<Type>::operator() ()
   DATA_IMATRIX(tx); // Tag release integer matrix (transpose)
   DATA_IMATRIX(ty); // Tag recover integer matrix (transpose)
   DATA_IMATRIX(tz); // Area index integer matrix (transpose)
-  DATA_MATRIX(tl); // Fishing mortality rate bias matrix (transpose)
-  DATA_MATRIX(tw); // Fishing mortality rate weights matrix (transpose)
+  DATA_ARRAY(tl); // Tag reporting rate matrix (transpose)
+  DATA_ARRAY(tw); // Fishing mortality rate weights matrix (transpose)
   DATA_SCALAR(h); // Instantaneous tag loss rate
   DATA_SCALAR(d); // Tags attached after release (proportion)
   // Settings
@@ -89,18 +89,24 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(npt); // Number of parameter time steps
   DATA_INTEGER(nft); // Number of fishing rate time steps
   DATA_INTEGER(nfa); // Number of fishing rate areas
+  DATA_INTEGER(nfg); // Number of fishing rate areas
   DATA_INTEGER(nlt); // Number of tag reporting rate time steps
   DATA_INTEGER(nla); // Number of tag reporting rate areas
+  DATA_INTEGER(nlg); // Number of tag reporting rate areas
   DATA_INTEGER(nwt); // Number of fishing rate weight time steps
   DATA_INTEGER(nwa); // Number of fishing rate weight areas
+  DATA_INTEGER(nwg); // Number of fishing rate weight areas
   // Index vectors
   DATA_IVECTOR(vpt); // Time step for movement parameters
   DATA_IVECTOR(vft); // Time step for fishing rate
   DATA_IVECTOR(vfa); // Area for fishing rate
+  DATA_IVECTOR(vfg); // Area for fishing rate
   DATA_IVECTOR(vlt); // Time step for tag reporting rate
   DATA_IVECTOR(vla); // Area for tag reporting rate
+  DATA_IVECTOR(vlg); // Area for tag reporting rate
   DATA_IVECTOR(vwt); // Time step for fishing rate weight
   DATA_IVECTOR(vwa); // Area for fishing rate weight
+  DATA_IVECTOR(vwg); // Area for fishing rate weight
 
   // Parameters ----------------------------------------------------------------
 
@@ -109,12 +115,13 @@ Type objective_function<Type>::operator() ()
   PARAMETER(logit_exp_neg_m); // Natural mortality
   PARAMETER_VECTOR(log_b); // Fishing mortality bias
   PARAMETER(log_k); // Negative binomial dispersion
+  // PARAMETER(log_f_sd);
 
   // Initialize the nll --------------------------------------------------------
 
   parallel_accumulator<Type> jnll(this);
   // Type jnll = 0;
-  Type re_nll = 0;
+  // Type re_nll = 0;
 
   // Instantiate arrays --------------------------------------------------------
 
@@ -124,9 +131,9 @@ Type objective_function<Type>::operator() ()
   array<Type> R(na, na, npt, ng); // Movement rates
   array<Type> S(na, nt, ng); // Survival rates
   array<Type> Yhat(na, nt, ng, na, nt); // Tag recoveries (predicted)
-  matrix<Type> tF(nfa, nft); // Fishing mortality rates
-  matrix<Type> tL(nla, nlt); // Fishing mortality rates
-  matrix<Type> tW(nwa, nwt); // Fishing mortality rates
+  array<Type> tF(nfa, nft, nfg); // Fishing mortality rates
+  array<Type> tL(nla, nlt, nlg); // Tag reporting rates
+  array<Type> tW(nwa, nwt, nwg); // Fishing mortality weights
   vector<Type> b(ng); // Fishing mortality bias
 
   // Initialize arrays ---------------------------------------------------------
@@ -142,15 +149,20 @@ Type objective_function<Type>::operator() ()
   // Inverse transform parameters ----------------------------------------------
 
   // Fishing mortality rates
-  for (int ct = 0; ct < nt; ct++) {
-    for (int ca = 0; ca < na; ca++) {
-      tF(vfa(ca), vft(ct)) = -log(invlogit(logit_exp_neg_tf(vfa(ca), vft(ct))));
+  for (int mg = 0; mg < ng; mg++) {
+    for (int ct = 0; ct < nt; ct++) {
+      for (int ca = 0; ca < na; ca++) {
+        tF(vfa(ca), vft(ct), vfg(mg)) =
+          -log(invlogit(logit_exp_neg_tf(vfa(ca), vft(ct), vfg(mg))));
+      }
     }
   }
   // Fishing mortality bias
   b = exp(log_b);
   // Natural mortality
   Type M = -log(invlogit(logit_exp_neg_m));
+  // Fishing mortality bias standard deviation
+  // Type F_sd = exp(log_f_sd);
 
   // Compute constants ---------------------------------------------------------
 
@@ -171,18 +183,28 @@ Type objective_function<Type>::operator() ()
 
   // Populate movement rates ---------------------------------------------------
 
-  R = create_rates(tp, tz);
+  R = create_movement_rates(tp, tz);
 
   // Compute the random effects nll --------------------------------------------
 
+  // vector<Type> F_mu(nfa);
+  // F_mu.setZero();
+  // for (int ca = 0; ca < na; ca++) {
+  //   F_mu(vfa(ca)) = tF.row(vfa(ca)).mean();
+  // }
+  // for (int ct = 0; ct < nt; ct++) {
+  //   for (int ca = 0; ca < na; ca++) {
+  //     jnll += dnorm(tF(vfa(ca), vft(ct)), F_mu(vfa(ca)), F_sd, TRUE);
+  //   }
+  // }
 
   // Populate the survival array -----------------------------------------------
 
   for (int mg = 0; mg < ng; mg++) {
     for (int ct = 0; ct < nt; ct++) {
       for (int ca = 0; ca < na; ca++) {
-        S(ca, ct, mg) =
-          exp(-b(mg) * tF(vfa(ca), vft(ct)) * tW(vwa(ca), vwt(ct)) - M - h);
+        S(ca, ct, mg) = exp(-b(mg) * tF(vfa(ca), vft(ct), vfg(mg)) *
+          tW(vwa(ca), vwt(ct), vwg(mg)) - M - h);
       }
     }
   }
@@ -214,9 +236,9 @@ Type objective_function<Type>::operator() ()
             for (int ra = 0; ra < na; ra++) {
               // Populate the predicted recovery array
               Yhat(ra, rt, mg, ma, mt) = N(ra, rt, mg, ma, mt) *
-                (Type(1) - exp(-b(mg) * tF(vfa(ra), vft(rt)) *
-                tW(vwa(ra), vwt(rt)))) *
-                tL(vla(ra), vlt(rt));
+                (Type(1) - exp(-b(mg) * tF(vfa(ra), vft(rt), vfg(mg)) *
+                tW(vwa(ra), vwt(rt), vwg(mg)))) *
+                tL(vla(ra), vlt(rt), vlg(mg));
               // Shelter error distribution from mean zero
               if (Yhat(ra, rt, mg, ma, mt) > 0) {
                 // Calculate the joint negative log likelihood
