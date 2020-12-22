@@ -39,19 +39,19 @@ check_data <- function (data = NULL) {
 
   # Check l --------------------------------------------------------------------
 
-  checkmate::assert_matrix(data$l, mode = "double", null.ok = TRUE)
-  checkmate::assert_matrix(data$l, any.missing = FALSE, null.ok = TRUE)
+  checkmate::assert_array(data$l, mode = "double", d = 3, null.ok = TRUE)
+  checkmate::assert_array(data$l, any.missing = FALSE, null.ok = TRUE)
   checkmate::assert_numeric(data$l, lower = 0, upper = 1, null.ok = TRUE)
 
   # Check w --------------------------------------------------------------------
 
-  checkmate::assert_matrix(data$w, mode = "double", null.ok = TRUE)
-  checkmate::assert_matrix(data$w, any.missing = FALSE, null.ok = TRUE)
+  checkmate::assert_array(data$w, mode = "double", d = 3, null.ok = TRUE)
+  checkmate::assert_array(data$w, any.missing = FALSE, null.ok = TRUE)
   checkmate::assert_numeric(data$w, lower = 0, upper = 12, null.ok = TRUE)
 
   # Check f --------------------------------------------------------------------
 
-  checkmate::assert_matrix(data$f, mode = "double", null.ok = TRUE)
+  checkmate::assert_array(data$f, mode = "double", d = 3, null.ok = TRUE)
   checkmate::assert_numeric(data$f, lower = 0, finite = TRUE, null.ok = TRUE)
 
   # Check m --------------------------------------------------------------------
@@ -123,7 +123,7 @@ check_parameters <- function (parameters) {
 
   # Check f --------------------------------------------------------------------
 
-  checkmate::assert_matrix(parameters$f, mode = "double", null.ok = TRUE)
+  checkmate::assert_array(parameters$f, mode = "double", d = 3, null.ok = TRUE)
   checkmate::assert_numeric(parameters$f, lower = 0, null.ok = TRUE)
   checkmate::assert_numeric(parameters$f, finite = TRUE, null.ok = TRUE)
 
