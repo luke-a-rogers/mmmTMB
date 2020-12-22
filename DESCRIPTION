@@ -1,6 +1,6 @@
 Package: mmmTMB
 Title: Fit Markov Movement Models (MMM) via Template Model Builder
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: 
     c(person(given = c("Luke", "A."),
              family = "Rogers",
