@@ -131,7 +131,6 @@ mmmTags <- function (x,
     cols$group <- "nogroup"
     x$nogroup <- 1L
     y$nogroup <- 1L
-    cat("no groups: if desired specify in groups and cols\n")
   }
   # Time step
   if (is.null(step)) {
@@ -336,6 +335,7 @@ mmmTags <- function (x,
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
     dplyr::arrange(release_step, release_area, group) %>%
+    tidyr::drop_na() %>%
     as.matrix()
   # Confirm mode
   if (typeof(x) != "integer") {
@@ -361,6 +361,7 @@ mmmTags <- function (x,
       group,
       recover_step,
       recover_area) %>%
+    tidyr::drop_na() %>%
     as.matrix()
   # Confirm mode
   if (typeof(y) != "integer") {
