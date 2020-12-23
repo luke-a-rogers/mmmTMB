@@ -37,10 +37,6 @@ NULL
 #' \itemize{
 #'   \item \code{l} A matrix of tag reporting rates (proportions).
 #'     Defaults to one if omitted (full reporting). See [mmmRates()].
-#'   \item \code{w} A matrix of fishing mortality rate weights. Useful
-#'     when the tag time step is finer than the fishing rate step.
-#'     Defaults to one (equal fishing rates across tag time steps
-#'     within a fishing rate time step). See [mmmWeights()].
 #'   \item \code{f} A matrix of fishing mortality rates. Estimated as
 #'     parameter(s) if omitted. See \code{parameters} and \code{settings}.
 #'     Also see [mmmRates()].
@@ -54,7 +50,6 @@ NULL
 #'   \item \code{p} An array of movement parameters. See TBD.
 #'   \item \code{f} A matrix of fishing mortality rates. See \code{settings}.
 #'   \item \code{m} The scalar instantaneous natural mortality rate.
-#'   \item \code{b} The vector fishing mortality bias by group.
 #'   \item \code{k} The scalar negative binomial dispersion.
 #' }
 #'
@@ -130,9 +125,9 @@ mmmFit <- function (data,
 
   # Create fishing rate indexes ------------------------------------------------
 
-  if (!is.null(f)) nft <- dim(f)[1] else nft <- 1L
-  if (!is.null(f)) nfa <- dim(f)[2] else nfa <- 1L
-  if (!is.null(f)) nfg <- dim(f)[3] else nfg <- 1L
+  if (!is.null(f)) nft <- dim(f)[1] else nft <- 1L # Defaults to give means
+  if (!is.null(f)) nfa <- dim(f)[2] else nfa <- na # Defaults to give means
+  if (!is.null(f)) nfg <- dim(f)[3] else nfg <- ng # Defaults to give means
   vft <- create_index_vector(nft, nt)
   vfa <- create_index_vector(nfa, na)
   vfg <- create_index_vector(nfg, ng)
@@ -152,14 +147,14 @@ mmmFit <- function (data,
   # Assign default initial parameter values ------------------------------------
 
   if (is.null(p)) p <- array(0, dim = c(npt, np, ng)) # Movement parameters
-  if (is.null(f)) f <- array(0.05, dim = c(nft, nfa, nfg)) # Fishing rates
-  if (is.null(m)) m <- 0.10 # Natural mortality rate
+  if (is.null(f)) f <- array(0.05 / results_step, dim = c(nft, nfa, nfg))
+  if (is.null(m)) m <- 0.10 / results_step # Natural mortality rate
   if (is.null(k)) k <- 1L # Negative binomial dispersion parameter
 
   # Confirm parameter dimensions -----------------------------------------------
 
   if (!all(dim(p) == c(npt, np, ng))) stop("dim(p) must equal c(npt, np, ng)\n")
-  if (dim(f)[1] < 1) stop("dim(f)[1] must be greater than zero\n")
+  if (!all(dim(f) == c(nft, nfa, nfg))) stop("dim(f) must equal c(nft, nfa, nfg)\n")
   if (length(m) != 1) stop("length(m) must be one")
   if (length(k) != 1) stop("length(k) must be one")
 
@@ -338,6 +333,7 @@ mmmFit <- function (data,
     results_step = results_step,
     nft = nft,
     nfa = nfa,
+    nfg = nfg,
     estimate = estimate_f
   )
 
