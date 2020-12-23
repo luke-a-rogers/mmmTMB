@@ -241,8 +241,10 @@ Type objective_function<Type>::operator() ()
                     log(Yhat(ra, rt, mg, ma, mt)) * Type(2) - log_k,
                     true);
                   break;
-                default:
-                  error("error_family not implemented");
+                default: {
+                    Rprintf("error_family not implemented");
+                    return 0;
+                  }
                 }
               }
             }
