@@ -336,6 +336,7 @@ mmmTags <- function (x,
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
     dplyr::arrange(release_step, release_area, group) %>%
+    tidyr::drop_na() %>%
     as.matrix()
   # Confirm mode
   if (typeof(x) != "integer") {
@@ -361,6 +362,7 @@ mmmTags <- function (x,
       group,
       recover_step,
       recover_area) %>%
+    tidyr::drop_na() %>%
     as.matrix()
   # Confirm mode
   if (typeof(y) != "integer") {
