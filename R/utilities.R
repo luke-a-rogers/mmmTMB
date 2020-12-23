@@ -180,8 +180,7 @@ create_movement_rates <- function (p, z) {
 #' r <- create_movement_rates(p, z)
 #' all(x - r < 1e-12)
 #'
-create_movement_parameters <- function (r,
-                                        z = NULL) {
+create_movement_parameters <- function (r, z = NULL) {
 
   # Check arguments
   checkmate::assert_array(r, d = 4, any.missing = FALSE)
@@ -488,6 +487,7 @@ create_fishing_results <- function (vlogit_exp_neg_tf,
                                     results_step,
                                     nft,
                                     nfa,
+                                    nfg,
                                     estimate) {
   if (estimate) {
     # Estimate
