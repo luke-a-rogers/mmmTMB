@@ -53,10 +53,6 @@ The list argument \code{data} may optionally contain:
 \itemize{
 \item \code{l} A matrix of tag reporting rates (proportions).
 Defaults to one if omitted (full reporting). See \code{\link[=mmmRates]{mmmRates()}}.
-\item \code{w} A matrix of fishing mortality rate weights. Useful
-when the tag time step is finer than the fishing rate step.
-Defaults to one (equal fishing rates across tag time steps
-within a fishing rate time step). See \code{\link[=mmmWeights]{mmmWeights()}}.
 \item \code{f} A matrix of fishing mortality rates. Estimated as
 parameter(s) if omitted. See \code{parameters} and \code{settings}.
 Also see \code{\link[=mmmRates]{mmmRates()}}.
@@ -70,7 +66,6 @@ values:
 \item \code{p} An array of movement parameters. See TBD.
 \item \code{f} A matrix of fishing mortality rates. See \code{settings}.
 \item \code{m} The scalar instantaneous natural mortality rate.
-\item \code{b} The vector fishing mortality bias by group.
 \item \code{k} The scalar negative binomial dispersion.
 }
 }

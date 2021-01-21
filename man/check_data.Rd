@@ -4,10 +4,16 @@
 \alias{check_data}
 \title{Check Data Argument for mmmFit()}
 \usage{
-check_data(data = NULL)
+check_data(data = NULL, exclude = NULL)
 }
 \arguments{
 \item{data}{\code{\link[=list]{list()}}}
+
+\item{exclude}{\code{\link[=character]{character()}} vector of element names in \code{data}
+to exclude from check.}
+}
+\value{
+\code{NULL}
 }
 \description{
 Check Data Argument for mmmFit()

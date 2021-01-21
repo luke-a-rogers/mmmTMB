@@ -4,10 +4,16 @@
 \alias{check_parameters}
 \title{Check Parameters Argument for mmmFit()}
 \usage{
-check_parameters(parameters)
+check_parameters(parameters, exclude = NULL)
 }
 \arguments{
 \item{parameters}{\code{\link[=list]{list()}}}
+
+\item{exclude}{\code{\link[=character]{character()}} vector of element names in \code{parameters}
+to exclude from check.}
+}
+\value{
+\code{NULL}
 }
 \description{
 Check Parameters Argument for mmmFit()

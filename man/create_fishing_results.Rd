@@ -10,6 +10,7 @@ create_fishing_results(
   results_step,
   nft,
   nfa,
+  nfg,
   estimate
 )
 }

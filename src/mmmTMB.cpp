@@ -213,7 +213,7 @@ Type objective_function<Type>::operator() ()
             for (int ca = 0; ca < na; ca++) {
               for (int pa = 0; pa < na; pa++) {
                 N(ca, dt, mg, ma, mt) += N(pa, dt - 1, mg, ma, mt) *
-                  S(pa, mt + dt - 1, mg) * R(pa, ca, vpt(mt + dt), mg);
+                  S(pa, mt + dt - 1, mg) * R(pa, ca, vpt(mt + dt - 1), mg);
               }
             }
           }
